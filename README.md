@@ -20,6 +20,7 @@ air-fun-mvp/
 ## Tech Stack
 
 ### Frontend
+
 - React 18 with TypeScript
 - Vite for build tooling
 - Tailwind CSS for styling
@@ -28,6 +29,7 @@ air-fun-mvp/
 - Ethers.js for blockchain interactions
 
 ### Backend
+
 - Node.js with Express
 - Socket.io for WebSocket connections
 - Mediasoup for WebRTC streaming
@@ -36,6 +38,7 @@ air-fun-mvp/
 - Hedera SDK and Ethers.js for blockchain
 
 ### Smart Contracts
+
 - Solidity 0.8.20
 - Hardhat for development
 - OpenZeppelin contracts
@@ -71,6 +74,13 @@ cp packages/frontend-viewer/.env.example packages/frontend-viewer/.env
 ```
 
 4. Fill in your environment variables in each `.env` file
+
+5. Set up the database schema:
+
+```bash
+# Follow the instructions in packages/backend/DATABASE_SETUP.md
+# to apply the database schema to your Supabase project
+```
 
 ### Development
 
@@ -159,7 +169,7 @@ The platform consists of:
 ## Key Features
 
 - Automatic memecoin creation when stream starts
-- Bonding curve pricing (price = k * supply²)
+- Bonding curve pricing (price = k \* supply²)
 - AI agents as 3D AR buy buttons
 - Token graduation at $69k market cap
 - Dual-chain support (Hedera + Base)
