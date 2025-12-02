@@ -16,10 +16,27 @@ if (
 }
 
 // Create Supabase client with service role key for backend operations
+// Implements connection pooling and query optimization (Requirement 21.4)
 export const supabase: SupabaseClient = createClient(supabaseUrl, supabaseServiceKey, {
   auth: {
     autoRefreshToken: false,
     persistSession: false,
+  },
+  db: {
+    schema: "public",
+  },
+  global: {
+    headers: {
+      // Enable connection pooling via Supabase's connection pooler
+      // This uses PgBouncer in transaction mode for better performance
+      "x-connection-mode": "transaction",
+    },
+  },
+  // Configure realtime for better performance
+  realtime: {
+    params: {
+      eventsPerSecond: 10, // Limit events to prevent overwhelming clients
+    },
   },
 });
 

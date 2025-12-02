@@ -2,6 +2,13 @@
 
 Decentralized livestreaming platform combining real-time video broadcasting with pump.fun-style memecoin launches.
 
+## 🔗 Quick Links
+
+- **[Blockchain Deployments](./BLOCKCHAIN.md)** - All deployed contract addresses and explorer links
+- **[Deployment Guide](./packages/contracts/DEPLOYMENT_GUIDE.md)** - How to deploy contracts
+- **[Deployment Summary](./DEPLOYMENT_SUMMARY.md)** - Latest deployment details
+- **[Architecture](./ARCHITECTURE.md)** - System architecture overview
+
 ## Project Structure
 
 This is a monorepo containing the following packages:
@@ -139,21 +146,58 @@ npm run format
 npm run format:check
 ```
 
-## Smart Contract Deployment
+## Blockchain Deployments
 
-### Deploy to Hedera Testnet
+### 📋 Deployed Contracts
+
+All smart contracts are deployed on testnet environments. For complete details, see [BLOCKCHAIN.md](./BLOCKCHAIN.md).
+
+#### Base Sepolia Testnet
+
+| Contract                   | Address                                      | Explorer                                                                                            |
+| -------------------------- | -------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| **USDC** (Stablecoin)      | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` | [View on BaseScan](https://sepolia.basescan.org/address/0x036CbD53842c5426634e7929541eC2318f3dCF7e) |
+| **AIR Token**              | `0xB2D4ED0c17487ABfEfC4d3feEE7EB860e82aA3f7` | [View on BaseScan](https://sepolia.basescan.org/address/0xB2D4ED0c17487ABfEfC4d3feEE7EB860e82aA3f7) |
+| **Memecoin Factory**       | `0x3c4ceDfE7F0a20013B0adae70443d0102166Db54` | [View on BaseScan](https://sepolia.basescan.org/address/0x3c4ceDfE7F0a20013B0adae70443d0102166Db54) |
+| **Liquidity Pool Factory** | `0x5834aEe88F9163a4146B3053D2Ffa34Bf53b6727` | [View on BaseScan](https://sepolia.basescan.org/address/0x5834aEe88F9163a4146B3053D2Ffa34Bf53b6727) |
+
+#### Hedera Testnet
+
+| Contract                   | Address                                      | Token ID      | Explorer                                                                                            |
+| -------------------------- | -------------------------------------------- | ------------- | --------------------------------------------------------------------------------------------------- |
+| **USDh** (Stablecoin)      | `0x00000000000000000000000000000000006e24c7` | `0.0.7200455` | [View on HashScan](https://hashscan.io/testnet/token/0.0.7200455)                                   |
+| **AIR Token**              | `0x00000000000000000000000000000000007052b7` | `0.0.7361207` | [View on HashScan](https://hashscan.io/testnet/token/0.0.7361207)                                   |
+| **Memecoin Factory**       | `0x210542A52aF3c0A5854B75E84C67312Ffe6F004A` | -             | [View on HashScan](https://hashscan.io/testnet/contract/0x210542A52aF3c0A5854B75E84C67312Ffe6F004A) |
+| **Liquidity Pool Factory** | `0x6796cb5394c66f194771b059c54137a9eD64cbEa` | -             | [View on HashScan](https://hashscan.io/testnet/contract/0x6796cb5394c66f194771b059c54137a9eD64cbEa) |
+
+### 🚀 Deploy New Contracts
+
+#### Deploy to Hedera Testnet
 
 ```bash
 cd packages/contracts
-npm run deploy:hedera
+npm run deploy:air:hedera
+npm run deploy:factory:hedera:rpc
+npm run deploy:pool-factory:hedera:rpc
 ```
 
-### Deploy to Base Sepolia
+#### Deploy to Base Sepolia
 
 ```bash
 cd packages/contracts
-npm run deploy:base
+npm run deploy:air:base
+npm run deploy:factory:base
+npm run deploy:pool-factory:base
 ```
+
+#### Deploy All Contracts
+
+```bash
+cd packages/contracts
+npm run deploy:all
+```
+
+For detailed deployment instructions, see [DEPLOYMENT_GUIDE.md](./packages/contracts/DEPLOYMENT_GUIDE.md).
 
 ## Architecture
 

@@ -1,4 +1,3 @@
-import { ethers } from "hardhat";
 import {
   Client,
   AccountId,
@@ -23,7 +22,8 @@ async function deployMemecoinFactoryHedera() {
   }
 
   const accountId = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID);
-  const privateKey = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY);
+  // Try to parse as ECDSA key (most common for Hedera)
+  const privateKey = PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY);
 
   // Create Hedera testnet client
   const client = Client.forTestnet();
@@ -32,17 +32,15 @@ async function deployMemecoinFactoryHedera() {
   console.log("Deploying MemecoinFactory on Hedera testnet...");
   console.log("Account ID:", accountId.toString());
 
-  // Get USDC token ID for Hedera testnet
-  // Note: You'll need to create or use an existing USDC-equivalent token on Hedera
-  const usdcTokenId = process.env.HEDERA_USDC_TOKEN_ID;
-  if (!usdcTokenId) {
-    throw new Error("HEDERA_USDC_TOKEN_ID not set in .env file");
-  }
+  // Get USDh token address for Hedera testnet
+  // USDh is a custom stablecoin deployed on Hedera testnet
+  const usdhAddress =
+    process.env.HEDERA_USDH_ADDRESS || "0x00000000000000000000000000000000006e24c7";
 
   // Platform wallet address (Hedera account ID)
   const platformWallet = process.env.HEDERA_PLATFORM_WALLET || accountId.toString();
 
-  console.log("USDC Token ID:", usdcTokenId);
+  console.log("USDh Token Address:", usdhAddress);
   console.log("Platform Wallet:", platformWallet);
 
   // Read compiled contract bytecode
@@ -55,9 +53,7 @@ async function deployMemecoinFactoryHedera() {
 
   const factoryBytecode = factoryArtifact.bytecode;
 
-  // Convert USDC token ID to Solidity address format (0.0.X -> 0x...)
-  // Hedera uses a special address format for HTS tokens
-  const usdcAddress = `0x${Buffer.from(usdcTokenId.replace(/\./g, "")).toString("hex").padStart(40, "0")}`;
+  // Convert platform wallet (Hedera account ID) to Solidity address format
   const platformWalletAddress = `0x${Buffer.from(platformWallet.replace(/\./g, "")).toString("hex").padStart(40, "0")}`;
 
   console.log("\nDeploying contract...");
@@ -66,13 +62,15 @@ async function deployMemecoinFactoryHedera() {
   try {
     // Deploy contract using ContractCreateFlow
     const contractCreate = new ContractCreateFlow()
-      .setGas(1000000) // Adjust gas as needed
+      .setGas(3000000) // Increased gas for factory contract
       .setBytecode(factoryBytecode)
       .setConstructorParameters(
-        new ContractFunctionParameters().addAddress(usdcAddress).addAddress(platformWalletAddress)
+        new ContractFunctionParameters().addAddress(usdhAddress).addAddress(platformWalletAddress)
       );
 
+    console.log("Executing contract deployment transaction...");
     const contractCreateSubmit = await contractCreate.execute(client);
+    console.log("Waiting for receipt...");
     const contractCreateReceipt = await contractCreateSubmit.getReceipt(client);
     const contractId = contractCreateReceipt.contractId;
 

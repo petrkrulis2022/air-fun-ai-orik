@@ -20,7 +20,8 @@ async function deployAIRTokenHedera() {
   }
 
   const accountId = AccountId.fromString(process.env.HEDERA_ACCOUNT_ID);
-  const privateKey = PrivateKey.fromString(process.env.HEDERA_PRIVATE_KEY);
+  // Try to parse as ECDSA key (most common for Hedera)
+  const privateKey = PrivateKey.fromStringECDSA(process.env.HEDERA_PRIVATE_KEY);
 
   // Create Hedera testnet client
   const client = Client.forTestnet();

@@ -9,7 +9,12 @@
     "deploy:air:hedera": "ts-node scripts/deploy-air-hedera.ts",
     "deploy:air:base": "hardhat run scripts/deploy-air-base.ts --network base-sepolia",
     "deploy:factory:hedera": "ts-node scripts/deploy-factory-hedera.ts",
+    "deploy:factory:hedera:rpc": "ts-node scripts/deploy-factory-hedera-rpc.ts",
     "deploy:factory:base": "hardhat run scripts/deploy-factory-base.ts --network base-sepolia",
+    "deploy:pool-factory:hedera": "ts-node scripts/deploy-pool-factory-hedera.ts",
+    "deploy:pool-factory:hedera:rpc": "ts-node scripts/deploy-pool-factory-hedera-rpc.ts",
+    "deploy:pool-factory:base": "hardhat run scripts/deploy-pool-factory-base.ts --network base-sepolia",
+    "deploy:all": "ts-node scripts/deploy-all.ts",
     "deploy:hedera": "hardhat run scripts/deploy-hedera.ts --network hedera-testnet",
     "deploy:base": "hardhat run scripts/deploy-base.ts --network base-sepolia",
     "verify": "hardhat verify"

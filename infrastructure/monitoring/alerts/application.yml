@@ -1,0 +1,144 @@
+# Prometheus alert rules for air.fun application
+
+groups:
+  - name: application_alerts
+    interval: 30s
+    rules:
+      # High error rate
+      - alert: HighErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{status=~"5.."}[5m])) by (instance)
+            /
+            sum(rate(http_requests_total[5m])) by (instance)
+          ) > 0.05
+        for: 5m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "High error rate on {{ $labels.instance }}"
+          description: "Error rate is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      # High response time
+      - alert: HighResponseTime
+        expr: |
+          histogram_quantile(0.95, 
+            sum(rate(http_request_duration_seconds_bucket[5m])) by (le, instance)
+          ) > 1
+        for: 5m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High response time on {{ $labels.instance }}"
+          description: "95th percentile response time is {{ $value }}s on {{ $labels.instance }}"
+
+      # Service down
+      - alert: ServiceDown
+        expr: up{job="backend"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "Service {{ $labels.instance }} is down"
+          description: "Backend service on {{ $labels.instance }} has been down for more than 2 minutes"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: |
+          (
+            node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes
+          ) / node_memory_MemTotal_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High memory usage on {{ $labels.instance }}"
+          description: "Memory usage is {{ $value | humanizePercentage }} on {{ $labels.instance }}"
+
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: |
+          100 - (avg by (instance) (irate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "High CPU usage on {{ $labels.instance }}"
+          description: "CPU usage is {{ $value }}% on {{ $labels.instance }}"
+
+      # Disk space low
+      - alert: DiskSpaceLow
+        expr: |
+          (
+            node_filesystem_avail_bytes{mountpoint="/"}
+            /
+            node_filesystem_size_bytes{mountpoint="/"}
+          ) < 0.15
+        for: 5m
+        labels:
+          severity: warning
+          component: infrastructure
+        annotations:
+          summary: "Low disk space on {{ $labels.instance }}"
+          description: "Only {{ $value | humanizePercentage }} disk space available on {{ $labels.instance }}"
+
+      # WebSocket connection issues
+      - alert: HighWebSocketDisconnections
+        expr: |
+          rate(websocket_disconnections_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          component: realtime
+        annotations:
+          summary: "High WebSocket disconnection rate"
+          description: "WebSocket disconnection rate is {{ $value }} per second"
+
+      # Database connection pool exhaustion
+      - alert: DatabaseConnectionPoolExhausted
+        expr: |
+          (
+            database_connections_active
+            /
+            database_connections_max
+          ) > 0.9
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection pool is {{ $value | humanizePercentage }} full"
+
+      # Redis connection issues
+      - alert: RedisConnectionFailures
+        expr: |
+          rate(redis_connection_errors_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: critical
+          component: cache
+        annotations:
+          summary: "Redis connection failures detected"
+          description: "Redis connection failure rate is {{ $value }} per second"
+
+      # Blockchain transaction failures
+      - alert: HighBlockchainTransactionFailures
+        expr: |
+          (
+            sum(rate(blockchain_transactions_total{status="failed"}[5m]))
+            /
+            sum(rate(blockchain_transactions_total[5m]))
+          ) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+          component: blockchain
+        annotations:
+          summary: "High blockchain transaction failure rate"
+          description: "Blockchain transaction failure rate is {{ $value | humanizePercentage }}"

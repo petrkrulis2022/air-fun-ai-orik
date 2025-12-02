@@ -1,11 +1,18 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { StreamDiscoveryPage } from "./pages/StreamDiscoveryPage";
+import { StreamViewPage } from "./pages/StreamViewPage";
+import { PortfolioPage } from "./pages/PortfolioPage";
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-4">air.fun - Viewer</h1>
-        <p className="text-gray-400">Viewer web application coming soon...</p>
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<StreamDiscoveryPage />} />
+        <Route path="/stream/:streamId" element={<StreamViewPage />} />
+        <Route path="/portfolio" element={<PortfolioPage />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

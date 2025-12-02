@@ -1,11 +1,62 @@
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import HomePage from "./pages/HomePage";
+import DashboardPage from "./pages/DashboardPage";
+import AuthPage from "./pages/AuthPage";
+import StreamCreatePage from "./pages/StreamCreatePage";
+import StreamDashboardPage from "./pages/StreamDashboardPage";
+import AgentManagementPage from "./pages/AgentManagementPage";
+import AnalyticsPage from "./pages/AnalyticsPage";
+import ProtectedRoute from "./components/ProtectedRoute";
+
 function App() {
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-4xl font-bold mb-4">air.fun - Streamer Dashboard</h1>
-        <p className="text-gray-400">Streamer web application coming soon...</p>
-      </div>
-    </div>
+    <BrowserRouter>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route
+          path="/dashboard"
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="/auth" element={<AuthPage />} />
+        <Route
+          path="/stream/create"
+          element={
+            <ProtectedRoute>
+              <StreamCreatePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stream/:id"
+          element={
+            <ProtectedRoute>
+              <StreamDashboardPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/stream/:id/agents"
+          element={
+            <ProtectedRoute>
+              <AgentManagementPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/analytics"
+          element={
+            <ProtectedRoute>
+              <AnalyticsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
   );
 }
 

@@ -1,0 +1,118 @@
+# Alertmanager configuration for air.fun
+
+global:
+  resolve_timeout: 5m
+  slack_api_url: "${SLACK_WEBHOOK_URL}"
+  pagerduty_url: "https://events.pagerduty.com/v2/enqueue"
+
+# Templates for notifications
+templates:
+  - "/etc/alertmanager/templates/*.tmpl"
+
+# Route tree for alerts
+route:
+  group_by: ["alertname", "cluster", "service"]
+  group_wait: 10s
+  group_interval: 10s
+  repeat_interval: 12h
+  receiver: "default"
+
+  routes:
+    # Critical alerts go to PagerDuty
+    - match:
+        severity: critical
+      receiver: "pagerduty-critical"
+      continue: true
+
+    # Critical alerts also go to Slack
+    - match:
+        severity: critical
+      receiver: "slack-critical"
+
+    # Warning alerts go to Slack only
+    - match:
+        severity: warning
+      receiver: "slack-warnings"
+
+    # Database alerts
+    - match:
+        component: database
+      receiver: "database-team"
+
+    # Blockchain alerts
+    - match:
+        component: blockchain
+      receiver: "blockchain-team"
+
+# Inhibition rules
+inhibit_rules:
+  # Inhibit warning if critical is firing
+  - source_match:
+      severity: "critical"
+    target_match:
+      severity: "warning"
+    equal: ["alertname", "instance"]
+
+# Receivers
+receivers:
+  - name: "default"
+    email_configs:
+      - to: "${ALERT_EMAIL}"
+        from: "alerts@air.fun"
+        smarthost: "smtp.gmail.com:587"
+        auth_username: "${SMTP_USERNAME}"
+        auth_password: "${SMTP_PASSWORD}"
+        headers:
+          Subject: "[air.fun] {{ .GroupLabels.alertname }}"
+
+  - name: "pagerduty-critical"
+    pagerduty_configs:
+      - service_key: "${PAGERDUTY_SERVICE_KEY}"
+        description: "{{ .GroupLabels.alertname }}: {{ .CommonAnnotations.summary }}"
+        details:
+          firing: "{{ .Alerts.Firing | len }}"
+          resolved: "{{ .Alerts.Resolved | len }}"
+
+  - name: "slack-critical"
+    slack_configs:
+      - channel: "#alerts-critical"
+        title: ":fire: Critical Alert"
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+        color: "danger"
+        send_resolved: true
+
+  - name: "slack-warnings"
+    slack_configs:
+      - channel: "#alerts-warnings"
+        title: ":warning: Warning Alert"
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Severity:* {{ .CommonLabels.severity }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+          *Description:* {{ .CommonAnnotations.description }}
+        color: "warning"
+        send_resolved: true
+
+  - name: "database-team"
+    slack_configs:
+      - channel: "#team-database"
+        title: "Database Alert"
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Component:* {{ .CommonLabels.component }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+        send_resolved: true
+
+  - name: "blockchain-team"
+    slack_configs:
+      - channel: "#team-blockchain"
+        title: "Blockchain Alert"
+        text: |
+          *Alert:* {{ .GroupLabels.alertname }}
+          *Component:* {{ .CommonLabels.component }}
+          *Summary:* {{ .CommonAnnotations.summary }}
+        send_resolved: true

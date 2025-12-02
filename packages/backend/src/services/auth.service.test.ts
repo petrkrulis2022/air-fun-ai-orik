@@ -1,56 +1,13 @@
-import { expect } from "vitest";
+// Auth Service Unit Tests
+// This file contains basic unit tests for auth service
+// Property tests are in auth.property.test.ts
 
-import { verifyAccessToken } from "../utils/jwt";
-
+import { describe, it, expect } from "vitest";
+import jwt from "jsonwebtoken";
 import fc from "fast-check";
+import { generateAccessToken, verifyAccessToken } from "../utils/jwt.js";
 
-import fc from "fast-check";
-
-import fc from "fast-check";
-
-import { expect } from "vitest";
-
-import { expect } from "vitest";
-
-import { expect } from "vitest";
-
-import { verifyAccessToken } from "../utils/jwt";
-
-import { generateAccessToken } from "../utils/jwt";
-
-import fc from "fast-check";
-
-import fc from "fast-check";
-
-import fc from "fast-check";
-
-import fc from "fast-check";
-
-import { expect } from "vitest";
-
-import { expect } from "vitest";
-
-import { expect } from "vitest";
-
-import { expect } from "vitest";
-
-import { expect } from "vitest";
-
-import { expect } from "vitest";
-
-import { verifyAccessToken } from "../utils/jwt";
-
-import { generateAccessToken } from "../utils/jwt";
-
-import fc from "fast-check";
-
-import fc from "fast-check";
-
-import fc from "fast-check";
-
-import fc from "fast-check";
-
-// This file is intentionally empty - property tests are in auth.property.test.ts
+describe("Auth Service - JWT Tests", () => {
   it("should verify that all valid JWT tokens are verifiable with future expiration", () => {
     fc.assert(
       fc.property(fc.uuid(), fc.constantFrom("streamer", "viewer"), (userId, role) => {

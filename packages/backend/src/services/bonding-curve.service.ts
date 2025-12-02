@@ -16,6 +16,7 @@ import {
 } from "../types/bonding-curve.types.js";
 import { BondingCurveState, BONDING_CURVE_K, GRADUATION_MARKET_CAP } from "../types/token.types.js";
 import { realtimeService } from "./realtime.service.js";
+import cacheService from "./cache.service.js";
 
 export class BondingCurveService {
   /**
@@ -98,13 +99,10 @@ export class BondingCurveService {
    */
   private async getBondingCurveState(tokenId: string): Promise<BondingCurveState | null> {
     try {
-      // Try to get from Redis cache first
-      const redis = await getRedisClient();
-      const cacheKey = `bonding_curve:${tokenId}`;
-      const cached = await redis.get(cacheKey);
-
+      // Try to get from cache first (1-second TTL)
+      const cached = await cacheService.getBondingCurveState(tokenId);
       if (cached) {
-        return JSON.parse(cached) as BondingCurveState;
+        return cached;
       }
 
       // If not in cache, get from database
@@ -132,7 +130,7 @@ export class BondingCurveService {
       };
 
       // Cache for 1 second
-      await redis.setEx(cacheKey, 1, JSON.stringify(state));
+      await cacheService.cacheBondingCurveState(tokenId, state);
 
       return state;
     } catch (error) {
@@ -339,9 +337,8 @@ export class BondingCurveService {
       })
       .eq("token_id", tokenId);
 
-    // Invalidate cache
-    const redis = await getRedisClient();
-    await redis.del(`bonding_curve:${tokenId}`);
+    // Invalidate cache using cache service
+    await cacheService.invalidateBondingCurveState(tokenId);
 
     // Broadcast price update to all viewers in the stream (if streamId provided)
     // This ensures updates are delivered within 500ms as per requirement 11.5
@@ -437,12 +434,12 @@ export class BondingCurveService {
       throw new Error("Token not found");
     }
 
-    // Cache result in Redis
-    const redis = await getRedisClient();
-    const cacheKey = `graduation_progress:${tokenId}`;
-    await redis.setEx(cacheKey, 5, JSON.stringify(state.progressToGraduation * 100));
+    const progress = state.progressToGraduation * 100;
 
-    return state.progressToGraduation * 100;
+    // Cache result with 5-second TTL
+    await cacheService.cacheGraduationProgress(tokenId, progress);
+
+    return progress;
   }
 }
 

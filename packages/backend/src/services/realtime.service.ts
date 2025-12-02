@@ -22,6 +22,11 @@ class RealtimeService {
   private eventLogs: Map<string, EventLog[]> = new Map();
   private eventIdCounter = 0;
 
+  // Price update batching (Requirement 11.5, 21.2)
+  private priceUpdateBatches: Map<string, BondingCurveState> = new Map(); // streamId -> latest state
+  private batchTimers: Map<string, NodeJS.Timeout> = new Map(); // streamId -> timer
+  private readonly BATCH_INTERVAL_MS = 100; // 100ms batching interval
+
   /**
    * Initialize Socket.io server with HTTP server
    * Configures automatic reconnection and connection recovery
@@ -231,6 +236,15 @@ class RealtimeService {
       // Clean up empty rooms
       if (roomInfo.connections.size === 0) {
         this.rooms.delete(streamId);
+
+        // Flush any pending price updates for this stream
+        const timer = this.batchTimers.get(streamId);
+        if (timer) {
+          clearTimeout(timer);
+          this.batchTimers.delete(streamId);
+        }
+        this.flushPriceUpdateBatch(streamId);
+
         // Keep event logs for a while for reconnection
         setTimeout(() => {
           this.eventLogs.delete(streamId);
@@ -290,10 +304,42 @@ class RealtimeService {
 
   /**
    * Broadcast price update to all viewers in stream
+   * Implements batching to aggregate multiple purchases before broadcasting (Requirement 11.5, 21.2)
+   * Batches updates every 100ms to reduce network overhead while maintaining sub-500ms delivery
    */
   broadcastPriceUpdate(streamId: string, priceState: BondingCurveState): void {
     if (!this.io) {
       throw new Error("Socket.io not initialized");
+    }
+
+    // Store the latest price state for this stream
+    this.priceUpdateBatches.set(streamId, priceState);
+
+    // If there's already a timer for this stream, don't create a new one
+    if (this.batchTimers.has(streamId)) {
+      return;
+    }
+
+    // Create a timer to flush the batch after 100ms
+    const timer = setTimeout(() => {
+      this.flushPriceUpdateBatch(streamId);
+    }, this.BATCH_INTERVAL_MS);
+
+    this.batchTimers.set(streamId, timer);
+  }
+
+  /**
+   * Flush the batched price update for a stream
+   * Sends the latest aggregated state to all viewers
+   */
+  private flushPriceUpdateBatch(streamId: string): void {
+    if (!this.io) {
+      return;
+    }
+
+    const priceState = this.priceUpdateBatches.get(streamId);
+    if (!priceState) {
+      return;
     }
 
     const payload: PriceUpdatePayload = {
@@ -310,6 +356,27 @@ class RealtimeService {
 
     // Broadcast to all in room with event ID for client tracking
     this.io.to(streamId).emit("price_update", { ...payload, eventId });
+
+    // Clean up
+    this.priceUpdateBatches.delete(streamId);
+    this.batchTimers.delete(streamId);
+  }
+
+  /**
+   * Force flush all pending price update batches
+   * Useful for cleanup or immediate delivery
+   */
+  flushAllPriceUpdateBatches(): void {
+    const streamIds = Array.from(this.priceUpdateBatches.keys());
+    streamIds.forEach((streamId) => {
+      // Clear the timer
+      const timer = this.batchTimers.get(streamId);
+      if (timer) {
+        clearTimeout(timer);
+      }
+      // Flush immediately
+      this.flushPriceUpdateBatch(streamId);
+    });
   }
 
   /**

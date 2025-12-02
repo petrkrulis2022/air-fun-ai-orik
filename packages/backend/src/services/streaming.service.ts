@@ -2,6 +2,7 @@
 import { supabase } from "../config/supabase.js";
 import { getRedisClient } from "../config/redis.js";
 import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import cacheService from "./cache.service.js";
 import {
   Stream,
   StreamRecord,
@@ -100,20 +101,8 @@ export class StreamingService {
     // Initialize viewer tracking
     this.activeViewers.set(streamId, new Set());
 
-    // Cache stream in Redis for quick discovery
-    const redis = await getRedisClient();
-    await redis.setEx(
-      `stream:${streamId}`,
-      300, // 5 minute TTL
-      JSON.stringify({
-        id: streamId,
-        streamerId,
-        streamerName,
-        title: config.title,
-        category: config.category,
-        status: "live",
-      })
-    );
+    // Invalidate active streams cache since a new stream started
+    await cacheService.invalidateActiveStreams("all");
 
     const streamRecord: StreamRecord = {
       id: streamData.id,
@@ -255,9 +244,8 @@ export class StreamingService {
     // Remove from active viewers
     this.activeViewers.delete(streamId);
 
-    // Remove from Redis cache
-    const redis = await getRedisClient();
-    await redis.del(`stream:${streamId}`);
+    // Invalidate active streams cache since a stream ended
+    await cacheService.invalidateActiveStreams("all");
 
     const summary: StreamSummary = {
       totalViewers: streamData.total_viewers,
@@ -306,8 +294,19 @@ export class StreamingService {
 
   /**
    * List active streams with filters
+   * Implements 5-second cache TTL for active streams (Requirement 21)
    */
   async listActiveStreams(filters: StreamFilters = {}): Promise<Stream[]> {
+    // Generate cache key based on filters
+    const filterKey = JSON.stringify(filters);
+
+    // Try to get from cache first (5-second TTL)
+    const cached = await cacheService.getActiveStreams(filterKey);
+    if (cached) {
+      return cached;
+    }
+
+    // If not in cache, query database
     let query = supabase.from("streams").select("*, users!inner(username)").eq("status", "live");
 
     if (filters.category) {
@@ -338,7 +337,7 @@ export class StreamingService {
       throw new Error(`Failed to list streams: ${error.message}`);
     }
 
-    return (data || []).map((stream: any) => ({
+    const streams = (data || []).map((stream: any) => ({
       id: stream.id,
       streamerId: stream.streamer_id,
       streamerName: stream.users.username,
@@ -351,6 +350,11 @@ export class StreamingService {
       startedAt: stream.started_at,
       status: stream.status,
     }));
+
+    // Cache for 5 seconds
+    await cacheService.cacheActiveStreams(streams, filterKey);
+
+    return streams;
   }
 
   /**
