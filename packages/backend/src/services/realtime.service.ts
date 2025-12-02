@@ -24,6 +24,7 @@ class RealtimeService {
 
   /**
    * Initialize Socket.io server with HTTP server
+   * Configures automatic reconnection and connection recovery
    */
   initialize(httpServer: HTTPServer): void {
     this.io = new SocketIOServer(httpServer, {
@@ -31,12 +32,27 @@ class RealtimeService {
         origin: process.env.CORS_ORIGIN || "*",
         methods: ["GET", "POST"],
       },
+      // Connection settings
       pingTimeout: 60000,
       pingInterval: 25000,
+
+      // Automatic reconnection settings (Requirement 16.1)
+      // Socket.io client will automatically attempt reconnection
+      // with exponential backoff when connection is lost
+      transports: ["websocket", "polling"], // Fallback to polling if websocket fails
+      allowUpgrades: true, // Allow upgrading from polling to websocket
+
+      // Connection state recovery (Requirement 16.2, 16.3, 16.4)
+      connectionStateRecovery: {
+        // Maximum duration for which the server will try to restore the session
+        maxDisconnectionDuration: 2 * 60 * 1000, // 2 minutes
+        // Whether to skip middlewares upon successful recovery
+        skipMiddlewares: true,
+      },
     });
 
     this.setupConnectionHandlers();
-    console.log("Socket.io server initialized");
+    console.log("Socket.io server initialized with automatic reconnection and recovery");
   }
 
   /**
@@ -71,14 +87,26 @@ class RealtimeService {
       });
 
       // Handle disconnection
-      socket.on("disconnect", () => {
-        this.handleDisconnection(socket);
+      socket.on("disconnect", (reason) => {
+        this.handleDisconnection(socket, reason);
       });
 
-      // Handle reconnection with event replay
+      // Handle reconnection with event replay (Requirement 16.2, 16.3)
       socket.on("reconnect_with_replay", (data: { streamId: string; lastEventId: string }) => {
         this.reconnectClient(socket, data.streamId, data.lastEventId);
       });
+
+      // Handle automatic reconnection (Requirement 16.1, 16.4)
+      // When Socket.io automatically reconnects, restore the client's state
+      if (socket.recovered) {
+        console.log(`Client ${socket.id} recovered from disconnection`);
+        // Client state is automatically restored by Socket.io
+        // Resume normal message delivery (Requirement 16.4)
+        socket.emit("connection_recovered", {
+          message: "Connection restored successfully",
+          timestamp: Date.now(),
+        });
+      }
     });
   }
 
@@ -103,25 +131,36 @@ class RealtimeService {
 
   /**
    * Handle client disconnection and cleanup
+   * Supports automatic reconnection (Requirement 16.1)
    */
-  handleDisconnection(socket: Socket): void {
+  handleDisconnection(socket: Socket, reason: string): void {
     const userId = socket.data.userId;
     const username = socket.data.username;
 
-    // Remove from all rooms
-    this.rooms.forEach((roomInfo, streamId) => {
-      if (roomInfo.connections.has(socket.id)) {
-        roomInfo.connections.delete(socket.id);
+    console.log(`Client disconnected: ${socket.id} (${username}) - Reason: ${reason}`);
 
-        // Broadcast viewer count update
-        this.io?.to(streamId).emit("viewer_count_update", {
-          streamId,
-          viewerCount: roomInfo.connections.size,
-        });
-      }
-    });
+    // For temporary disconnections, Socket.io will handle reconnection automatically
+    // Only clean up if it's a permanent disconnection
+    const isPermanentDisconnect =
+      reason === "client namespace disconnect" || reason === "server namespace disconnect";
 
-    console.log(`Client disconnected: ${socket.id} (${username})`);
+    if (isPermanentDisconnect) {
+      // Remove from all rooms
+      this.rooms.forEach((roomInfo, streamId) => {
+        if (roomInfo.connections.has(socket.id)) {
+          roomInfo.connections.delete(socket.id);
+
+          // Broadcast viewer count update
+          this.io?.to(streamId).emit("viewer_count_update", {
+            streamId,
+            viewerCount: roomInfo.connections.size,
+          });
+        }
+      });
+      console.log(`Permanent disconnect - cleaned up user: ${username}`);
+    } else {
+      console.log(`Temporary disconnect - user ${username} may reconnect automatically`);
+    }
   }
 
   /**
@@ -242,11 +281,11 @@ class RealtimeService {
       throw new Error("Socket.io not initialized");
     }
 
-    // Log event for replay
-    this.logEvent(streamId, "chat", message);
+    // Log event for replay and get event ID
+    const eventId = this.logEvent(streamId, "chat", message);
 
-    // Broadcast to all in room
-    this.io.to(streamId).emit("chat_message", message);
+    // Broadcast to all in room with event ID for client tracking
+    this.io.to(streamId).emit("chat_message", { ...message, eventId });
   }
 
   /**
@@ -266,11 +305,11 @@ class RealtimeService {
       timestamp: Date.now(),
     };
 
-    // Log event for replay
-    this.logEvent(streamId, "price_update", payload);
+    // Log event for replay and get event ID
+    const eventId = this.logEvent(streamId, "price_update", payload);
 
-    // Broadcast to all in room
-    this.io.to(streamId).emit("price_update", payload);
+    // Broadcast to all in room with event ID for client tracking
+    this.io.to(streamId).emit("price_update", { ...payload, eventId });
   }
 
   /**
@@ -296,11 +335,11 @@ class RealtimeService {
       isLargePurchase: purchase.totalSpent > LARGE_PURCHASE_THRESHOLD,
     };
 
-    // Log event for replay
-    this.logEvent(streamId, "purchase", notification);
+    // Log event for replay and get event ID
+    const eventId = this.logEvent(streamId, "purchase", notification);
 
-    // Broadcast to all in room
-    this.io.to(streamId).emit("purchase_notification", notification);
+    // Broadcast to all in room with event ID for client tracking
+    this.io.to(streamId).emit("purchase_notification", { ...notification, eventId });
   }
 
   /**
@@ -311,47 +350,93 @@ class RealtimeService {
       throw new Error("Socket.io not initialized");
     }
 
-    // Log event for replay
-    this.logEvent(streamId, "graduation", graduation);
+    // Log event for replay and get event ID
+    const eventId = this.logEvent(streamId, "graduation", graduation);
 
-    // Broadcast to all in room
-    this.io.to(streamId).emit("graduation_announcement", graduation);
+    // Broadcast to all in room with event ID for client tracking
+    this.io.to(streamId).emit("graduation_announcement", { ...graduation, eventId });
   }
 
   /**
    * Reconnect client and replay missed events
+   * Implements event replay from last event ID (Requirement 16.2, 16.3)
+   * Resumes normal real-time message delivery (Requirement 16.4)
    */
   reconnectClient(socket: Socket, streamId: string, lastEventId: string): void {
+    const username = socket.data.username || "Unknown";
+    console.log(
+      `Reconnecting client ${socket.id} (${username}) to stream ${streamId}, last event: ${lastEventId}`
+    );
+
     const eventLog = this.eventLogs.get(streamId);
-    if (!eventLog) {
-      socket.emit("replay_complete", { eventsReplayed: 0 });
+    if (!eventLog || eventLog.length === 0) {
+      socket.emit("replay_complete", {
+        eventsReplayed: 0,
+        message: "No events to replay",
+        timestamp: Date.now(),
+      });
+      console.log(`No event log found for stream ${streamId}`);
       return;
     }
 
-    // Find events after lastEventId
+    // Find events after lastEventId (Requirement 16.2)
     const lastEventIndex = eventLog.findIndex((event) => event.id === lastEventId);
-    const missedEvents = lastEventIndex >= 0 ? eventLog.slice(lastEventIndex + 1) : eventLog;
 
-    // Replay missed events
+    let missedEvents: EventLog[];
+    if (lastEventIndex >= 0) {
+      // Found the last event, replay everything after it
+      missedEvents = eventLog.slice(lastEventIndex + 1);
+      console.log(
+        `Found last event at index ${lastEventIndex}, replaying ${missedEvents.length} events`
+      );
+    } else if (lastEventId === "") {
+      // No last event ID provided, replay all events
+      missedEvents = eventLog;
+      console.log(`No last event ID provided, replaying all ${missedEvents.length} events`);
+    } else {
+      // Last event ID not found, might be too old
+      // Replay recent events (last 100)
+      missedEvents = eventLog.slice(-100);
+      console.log(`Last event ID not found, replaying last ${missedEvents.length} events`);
+    }
+
+    // Replay missed events (Requirement 16.3)
+    let replayedCount = 0;
     missedEvents.forEach((event) => {
-      switch (event.eventType) {
-        case "chat":
-          socket.emit("chat_message", event.payload);
-          break;
-        case "purchase":
-          socket.emit("purchase_notification", event.payload);
-          break;
-        case "price_update":
-          socket.emit("price_update", event.payload);
-          break;
-        case "graduation":
-          socket.emit("graduation_announcement", event.payload);
-          break;
+      try {
+        switch (event.eventType) {
+          case "chat":
+            socket.emit("chat_message", event.payload);
+            break;
+          case "purchase":
+            socket.emit("purchase_notification", event.payload);
+            break;
+          case "price_update":
+            socket.emit("price_update", event.payload);
+            break;
+          case "graduation":
+            socket.emit("graduation_announcement", event.payload);
+            break;
+          default:
+            console.warn(`Unknown event type: ${event.eventType}`);
+        }
+        replayedCount++;
+      } catch (error) {
+        console.error(`Error replaying event ${event.id}:`, error);
       }
     });
 
-    socket.emit("replay_complete", { eventsReplayed: missedEvents.length });
-    console.log(`Replayed ${missedEvents.length} events for client ${socket.id}`);
+    // Notify client that replay is complete and normal delivery resumes (Requirement 16.4)
+    socket.emit("replay_complete", {
+      eventsReplayed: replayedCount,
+      lastEventId: missedEvents.length > 0 ? missedEvents[missedEvents.length - 1].id : lastEventId,
+      message: "Event replay complete, resuming normal message delivery",
+      timestamp: Date.now(),
+    });
+
+    console.log(
+      `Successfully replayed ${replayedCount} events for client ${socket.id} (${username})`
+    );
   }
 
   /**
@@ -371,29 +456,34 @@ class RealtimeService {
 
   /**
    * Log event for replay functionality
+   * Returns the event ID for client tracking
    */
   private logEvent(
     streamId: string,
     eventType: "chat" | "purchase" | "price_update" | "graduation",
     payload: any
-  ): void {
+  ): string {
     const eventLog = this.eventLogs.get(streamId);
-    if (!eventLog) return;
 
+    const eventId = this.generateEventId();
     const event: EventLog = {
-      id: this.generateEventId(),
+      id: eventId,
       streamId,
       eventType,
       payload,
       timestamp: Date.now(),
     };
 
-    eventLog.push(event);
+    if (eventLog) {
+      eventLog.push(event);
 
-    // Keep only last 1000 events per stream
-    if (eventLog.length > 1000) {
-      eventLog.shift();
+      // Keep only last 1000 events per stream
+      if (eventLog.length > 1000) {
+        eventLog.shift();
+      }
     }
+
+    return eventId;
   }
 
   /**
@@ -426,6 +516,37 @@ class RealtimeService {
    */
   getActiveStreamIds(): string[] {
     return Array.from(this.rooms.keys());
+  }
+
+  /**
+   * Get the latest event ID for a stream
+   * Useful for clients to track their position in the event log
+   */
+  getLatestEventId(streamId: string): string | null {
+    const eventLog = this.eventLogs.get(streamId);
+    if (!eventLog || eventLog.length === 0) {
+      return null;
+    }
+    return eventLog[eventLog.length - 1].id;
+  }
+
+  /**
+   * Get event log statistics for monitoring
+   */
+  getEventLogStats(streamId: string): {
+    eventCount: number;
+    oldestEventTimestamp: number | null;
+    newestEventTimestamp: number | null;
+  } {
+    const eventLog = this.eventLogs.get(streamId);
+    if (!eventLog || eventLog.length === 0) {
+      return { eventCount: 0, oldestEventTimestamp: null, newestEventTimestamp: null };
+    }
+    return {
+      eventCount: eventLog.length,
+      oldestEventTimestamp: eventLog[0].timestamp,
+      newestEventTimestamp: eventLog[eventLog.length - 1].timestamp,
+    };
   }
 }
 

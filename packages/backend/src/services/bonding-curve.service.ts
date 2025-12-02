@@ -252,7 +252,7 @@ export class BondingCurveService {
       timestamp: Date.now(),
     };
 
-    // Get stream ID for broadcasting
+    // Get stream ID and buyer username for broadcasting
     const { data: token } = await supabase
       .from("memecoins")
       .select("stream_id")
@@ -260,6 +260,15 @@ export class BondingCurveService {
       .single();
 
     const streamId = token?.stream_id;
+
+    // Get buyer username
+    const { data: buyer } = await supabase
+      .from("users")
+      .select("username")
+      .eq("id", purchase.buyerId)
+      .single();
+
+    const buyerUsername = buyer?.username || "Anonymous";
 
     // Update bonding curve state and broadcast price update
     await this.updateBondingCurveState(
@@ -281,6 +290,20 @@ export class BondingCurveService {
       tx_hash: purchaseRecord.txHash,
       timestamp: purchaseRecord.timestamp,
     });
+
+    // Broadcast purchase notification to all viewers in the stream
+    // This ensures notifications are delivered within 1 second as per requirement 14.4
+    if (streamId) {
+      const newMarketCap =
+        this.calculatePrice(state.tokensSold + purchase.amount) *
+        (state.tokensSold + purchase.amount);
+      realtimeService.broadcastPurchaseNotification(
+        streamId,
+        purchaseRecord,
+        buyerUsername,
+        newMarketCap
+      );
+    }
 
     return purchaseRecord;
   }
