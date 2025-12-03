@@ -7,11 +7,14 @@ import { streamService } from "../services/streamService";
 import { SearchBar } from "../components/SearchBar";
 import { CategoryFilter } from "../components/CategoryFilter";
 import { StreamGrid } from "../components/StreamGrid";
+import { WalletConnectModal } from "../components/WalletConnectModal";
+import { useAuthStore } from "../store/authStore";
 
 const CATEGORIES = ["Gaming", "Music", "Art", "Tech", "Just Chatting", "Crypto"];
 
 export function StreamDiscoveryPage() {
   const navigate = useNavigate();
+  const { user, isAuthenticated } = useAuthStore();
   const [activeStreams, setActiveStreams] = useState<Stream[]>([]);
   const [hotStreams, setHotStreams] = useState<Stream[]>([]);
   const [filteredStreams, setFilteredStreams] = useState<Stream[]>([]);
@@ -19,6 +22,7 @@ export function StreamDiscoveryPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [showWalletModal, setShowWalletModal] = useState(false);
 
   // Fetch active streams
   const fetchActiveStreams = useCallback(async () => {
@@ -101,15 +105,32 @@ export function StreamDiscoveryPage() {
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between">
             <h1 className="text-2xl font-bold text-purple-400">air.fun</h1>
-            <button
-              onClick={() => navigate("/portfolio")}
-              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
-            >
-              My Portfolio
-            </button>
+            <div className="flex items-center gap-4">
+              {isAuthenticated ? (
+                <>
+                  <span className="text-gray-300 text-sm">{user?.username || "Viewer"}</span>
+                  <button
+                    onClick={() => navigate("/portfolio")}
+                    className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                  >
+                    My Portfolio
+                  </button>
+                </>
+              ) : (
+                <button
+                  onClick={() => setShowWalletModal(true)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 rounded-lg transition-colors"
+                >
+                  Connect Wallet
+                </button>
+              )}
+            </div>
           </div>
         </div>
       </header>
+
+      {/* Wallet Connect Modal */}
+      <WalletConnectModal isOpen={showWalletModal} onClose={() => setShowWalletModal(false)} />
 
       <div className="container mx-auto px-4 py-8">
         {/* Hot Streams Section */}

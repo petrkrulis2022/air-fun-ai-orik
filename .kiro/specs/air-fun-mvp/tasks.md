@@ -40,7 +40,7 @@
   - Implement getWalletBalances to query balances across chains
   - _Requirements: 1.3_
 
-- [ ] 2.6 Write unit tests for authentication service
+- [x] 2.6 Write unit tests for authentication service
   - Test wallet signature verification
   - Test JWT token generation and validation
   - Test password hashing and comparison
@@ -307,7 +307,7 @@
   - Test statistics calculations
   - _Requirements: 6, 7, 19_
 
-- [-] 9. Implement Real-Time Communication Service
+- [x] 9. Implement Real-Time Communication Service
   - _Requirements: 11, 13, 14, 16_
 
 - [x] 9.1 Set up Socket.io server
@@ -601,7 +601,7 @@
   - Test chat functionality
   - _Requirements: 4, 9, 11, 13_
 
-- [-] 15. Implement caching and optimization
+- [x] 15. Implement caching and optimization
   - _Requirements: 11, 21_
 
 - [x] 15.1 Set up Redis caching
@@ -633,7 +633,7 @@
 - [x] 16. Final Checkpoint - Ensure all tests pass
   - Ensure all tests pass, ask the user if questions arise.
 
-- [-] 17. Deployment and infrastructure setup
+- [x] 17. Deployment and infrastructure setup
   - _Requirements: All_
 
 - [x] 17.1 Create Docker containers
