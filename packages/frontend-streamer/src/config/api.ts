@@ -20,6 +20,12 @@ export const API_ENDPOINTS = {
   STREAMS_HOT: "/streams/hot",
   STREAMS_STATUS: (id: string) => `/streams/${id}/status`,
 
+  // WebRTC Streaming
+  STREAMS_RTP_CAPABILITIES: (streamId: string) => `/streams/${streamId}/rtp-capabilities`,
+  STREAMS_TRANSPORT_PRODUCER: (streamId: string) => `/streams/${streamId}/transport/producer`,
+  STREAMS_TRANSPORT_CONNECT: (transportId: string) => `/streams/transport/${transportId}/connect`,
+  STREAMS_TRANSPORT_PRODUCE: (transportId: string) => `/streams/transport/${transportId}/produce`,
+
   // Tokens
   TOKENS_GET: (id: string) => `/tokens/${id}`,
   TOKENS_BY_STREAM: (streamId: string) => `/tokens/stream/${streamId}`,

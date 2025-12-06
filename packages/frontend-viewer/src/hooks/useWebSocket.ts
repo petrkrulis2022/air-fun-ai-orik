@@ -30,8 +30,28 @@ export function useWebSocket({
   const socketRef = useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
 
+  // Store callbacks in refs to avoid reconnection on callback changes
+  const onChatMessageRef = useRef(onChatMessage);
+  const onPriceUpdateRef = useRef(onPriceUpdate);
+  const onPurchaseNotificationRef = useRef(onPurchaseNotification);
+  const onGraduationAnnouncementRef = useRef(onGraduationAnnouncement);
+
+  // Update refs when callbacks change
+  useEffect(() => {
+    onChatMessageRef.current = onChatMessage;
+    onPriceUpdateRef.current = onPriceUpdate;
+    onPurchaseNotificationRef.current = onPurchaseNotification;
+    onGraduationAnnouncementRef.current = onGraduationAnnouncement;
+  }, [onChatMessage, onPriceUpdate, onPurchaseNotification, onGraduationAnnouncement]);
+
   const connect = useCallback(() => {
     if (!enabled || !streamId) return;
+
+    // Don't reconnect if already connected
+    if (socketRef.current?.connected) {
+      console.log("WebSocket already connected, skipping reconnection");
+      return;
+    }
 
     const socket = io(WS_URL, {
       transports: ["websocket", "polling"],
@@ -60,35 +80,28 @@ export function useWebSocket({
       console.error("WebSocket connection error:", error);
     });
 
-    // Chat messages
+    // Chat messages - use refs to get latest callbacks
     socket.on("chat-message", (message: ChatMessage) => {
-      onChatMessage?.(message);
+      onChatMessageRef.current?.(message);
     });
 
     // Price updates
     socket.on("price-update", (state: BondingCurveState) => {
-      onPriceUpdate?.(state);
+      onPriceUpdateRef.current?.(state);
     });
 
     // Purchase notifications
     socket.on("purchase-notification", (notification: PurchaseNotification) => {
-      onPurchaseNotification?.(notification);
+      onPurchaseNotificationRef.current?.(notification);
     });
 
     // Graduation announcements
     socket.on("graduation-announcement", (notification: GraduationNotification) => {
-      onGraduationAnnouncement?.(notification);
+      onGraduationAnnouncementRef.current?.(notification);
     });
 
     return socket;
-  }, [
-    streamId,
-    enabled,
-    onChatMessage,
-    onPriceUpdate,
-    onPurchaseNotification,
-    onGraduationAnnouncement,
-  ]);
+  }, [streamId, enabled]); // Only depend on streamId and enabled, not callbacks
 
   const disconnect = useCallback(() => {
     if (socketRef.current) {

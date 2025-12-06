@@ -27,6 +27,7 @@ export class CacheService {
   async cacheBondingCurveState(tokenId: string, state: BondingCurveState): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return; // Redis not available
       const key = this.getBondingCurveKey(tokenId);
       await redis.setEx(key, this.BONDING_CURVE_TTL, JSON.stringify(state));
     } catch (error) {
@@ -43,6 +44,7 @@ export class CacheService {
   async getBondingCurveState(tokenId: string): Promise<BondingCurveState | null> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return null; // Redis not available
       const key = this.getBondingCurveKey(tokenId);
       const cached = await redis.get(key);
 
@@ -64,6 +66,7 @@ export class CacheService {
   async invalidateBondingCurveState(tokenId: string): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return;
       const key = this.getBondingCurveKey(tokenId);
       await redis.del(key);
     } catch (error) {
@@ -79,6 +82,7 @@ export class CacheService {
   async cacheActiveStreams(streams: Stream[], filterKey: string = "default"): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return;
       const key = this.getActiveStreamsKey(filterKey);
       await redis.setEx(key, this.ACTIVE_STREAMS_TTL, JSON.stringify(streams));
     } catch (error) {
@@ -94,6 +98,7 @@ export class CacheService {
   async getActiveStreams(filterKey: string = "default"): Promise<Stream[] | null> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return null;
       const key = this.getActiveStreamsKey(filterKey);
       const cached = await redis.get(key);
 
@@ -115,6 +120,7 @@ export class CacheService {
   async invalidateActiveStreams(filterKey: string = "default"): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return; // Redis not available
 
       if (filterKey === "all") {
         // Clear all active stream caches
@@ -139,6 +145,7 @@ export class CacheService {
   async cacheTokenMetadata(tokenId: string, metadata: Partial<Memecoin>): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return;
       const key = this.getTokenMetadataKey(tokenId);
       await redis.setEx(key, this.TOKEN_METADATA_TTL, JSON.stringify(metadata));
     } catch (error) {
@@ -154,6 +161,7 @@ export class CacheService {
   async getTokenMetadata(tokenId: string): Promise<Partial<Memecoin> | null> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return null;
       const key = this.getTokenMetadataKey(tokenId);
       const cached = await redis.get(key);
 
@@ -175,6 +183,7 @@ export class CacheService {
   async invalidateTokenMetadata(tokenId: string): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return;
       const key = this.getTokenMetadataKey(tokenId);
       await redis.del(key);
     } catch (error) {
@@ -190,6 +199,7 @@ export class CacheService {
   async cacheGraduationProgress(tokenId: string, progress: number): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return;
       const key = this.getGraduationProgressKey(tokenId);
       await redis.setEx(key, this.GRADUATION_PROGRESS_TTL, progress.toString());
     } catch (error) {
@@ -205,6 +215,7 @@ export class CacheService {
   async getGraduationProgress(tokenId: string): Promise<number | null> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return null;
       const key = this.getGraduationProgressKey(tokenId);
       const cached = await redis.get(key);
 
@@ -228,6 +239,7 @@ export class CacheService {
   async cachePriceQuote(tokenId: string, amount: number, quote: any): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return;
       const key = this.getPriceQuoteKey(tokenId, amount);
       await redis.setEx(key, this.PRICE_QUOTE_TTL, JSON.stringify(quote));
     } catch (error) {
@@ -244,6 +256,7 @@ export class CacheService {
   async getPriceQuote(tokenId: string, amount: number): Promise<any | null> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return null;
       const key = this.getPriceQuoteKey(tokenId, amount);
       const cached = await redis.get(key);
 
@@ -267,6 +280,7 @@ export class CacheService {
       if (keys.length === 0) return;
 
       const redis = await getRedisClient();
+      if (!redis) return;
       await redis.del(keys);
     } catch (error) {
       console.error(`Error batch invalidating cache keys:`, error);
@@ -285,6 +299,7 @@ export class CacheService {
   }> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return { totalKeys: 0, bondingCurveKeys: 0, streamKeys: 0, tokenMetadataKeys: 0 };
 
       const allKeys = await redis.keys("*");
       const bondingCurveKeys = await redis.keys("bonding_curve:*");
@@ -314,6 +329,7 @@ export class CacheService {
   async clearAll(): Promise<void> {
     try {
       const redis = await getRedisClient();
+      if (!redis) return;
       await redis.flushDb();
       console.log("All cache cleared");
     } catch (error) {

@@ -200,8 +200,22 @@ router.post("/transport/:transportId/produce", async (req: Request, res: Respons
     const { transportId } = req.params;
     const { kind, rtpParameters } = req.body;
 
+    console.log(`Produce request for transport ${transportId}:`);
+    console.log(`  Kind: ${kind}`);
+    console.log(`  Codecs: ${JSON.stringify(rtpParameters?.codecs?.map((c: any) => c.mimeType))}`);
+
     if (!kind || !rtpParameters) {
       return res.status(400).json({ error: "Missing kind or rtpParameters" });
+    }
+
+    // Validate codecs have mimeType
+    if (rtpParameters.codecs) {
+      for (const codec of rtpParameters.codecs) {
+        if (!codec.mimeType) {
+          console.error("Codec missing mimeType:", codec);
+          return res.status(400).json({ error: "Codec missing mimeType" });
+        }
+      }
     }
 
     const producerId = await streamingService.produceMedia(transportId, kind, rtpParameters);
@@ -241,6 +255,21 @@ router.post("/:id/transport/:transportId/consume", async (req: Request, res: Res
 });
 
 /**
+ * POST /streams/consumer/:consumerId/resume
+ * Resume a consumer on the server side
+ */
+router.post("/consumer/:consumerId/resume", async (req: Request, res: Response) => {
+  try {
+    const { consumerId } = req.params;
+    await streamingService.resumeConsumer(consumerId);
+    res.json({ resumed: true });
+  } catch (error: any) {
+    console.error("Error resuming consumer:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
  * GET /streams/:id/rtp-capabilities
  * Get router RTP capabilities
  */
@@ -257,6 +286,23 @@ router.get("/:id/rtp-capabilities", async (req: Request, res: Response) => {
     res.json({ rtpCapabilities });
   } catch (error: any) {
     console.error("Error getting RTP capabilities:", error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /streams/:id/producers
+ * Get producer IDs for a stream (video and audio)
+ */
+router.get("/:id/producers", async (req: Request, res: Response) => {
+  try {
+    const { id: streamId } = req.params;
+
+    const producerIds = mediaServerService.getProducerIds(streamId);
+
+    res.json({ producerIds });
+  } catch (error: any) {
+    console.error("Error getting producers:", error);
     res.status(500).json({ error: error.message });
   }
 });

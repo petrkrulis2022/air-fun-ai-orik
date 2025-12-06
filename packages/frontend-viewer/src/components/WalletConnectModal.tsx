@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useWallet } from "../hooks/useWallet";
 import { useAuthStore } from "../store/authStore";
 import { apiService } from "../services/api";
+import type { AuthSession } from "../types";
 
 interface WalletConnectModalProps {
   isOpen: boolean;
@@ -18,16 +19,18 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
   const handleMetaMaskConnect = async () => {
     try {
       setError(null);
-      const { address, signature } = await connectMetaMask();
+      const { address, signature, message, chain } = await connectMetaMask();
 
       // Authenticate with backend
-      const response = await apiService.post("/auth/wallet/connect", {
+      const session = await apiService.post<AuthSession>("/auth/wallet/connect", {
         walletType: "metamask",
         address,
         signature,
+        message,
+        chain,
       });
 
-      setAuth(response.data);
+      setAuth(session);
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to connect wallet");
@@ -37,16 +40,18 @@ export function WalletConnectModal({ isOpen, onClose }: WalletConnectModalProps)
   const handleHashioConnect = async () => {
     try {
       setError(null);
-      const { address, signature } = await connectHashio();
+      const { address, signature, message, chain } = await connectHashio();
 
       // Authenticate with backend
-      const response = await apiService.post("/auth/wallet/connect", {
+      const session = await apiService.post<AuthSession>("/auth/wallet/connect", {
         walletType: "hashio",
         address,
         signature,
+        message,
+        chain,
       });
 
-      setAuth(response.data);
+      setAuth(session);
       onClose();
     } catch (err: any) {
       setError(err.message || "Failed to connect wallet");

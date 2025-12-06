@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
+import { WalletInfoDisplay } from "../components/WalletInfoDisplay";
 
 export default function HomePage() {
   const navigate = useNavigate();
@@ -7,6 +8,13 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-gray-900 to-black text-white">
+      {/* Header with Wallet Info */}
+      {isAuthenticated && (
+        <div className="absolute top-4 right-4">
+          <WalletInfoDisplay />
+        </div>
+      )}
+
       <div className="container mx-auto px-4 py-16">
         <div className="text-center mb-16">
           <h1 className="text-6xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-purple-400 to-pink-600">

@@ -54,9 +54,14 @@ app.use(errorHandler);
 // Initialize media server and start HTTP server
 async function startServer() {
   try {
-    // Initialize mediasoup workers
-    await mediaServerService.initialize(2);
-    console.log("Media server initialized");
+    // Try to initialize mediasoup workers (may fail on some systems)
+    try {
+      await mediaServerService.initialize(2);
+      console.log("Media server initialized");
+    } catch (mediaError) {
+      console.warn("⚠️  Media server (mediasoup) failed to initialize:", mediaError);
+      console.warn("⚠️  Streaming will work without WebRTC (demo mode)");
+    }
 
     // Initialize Socket.io server
     realtimeService.initialize(httpServer);

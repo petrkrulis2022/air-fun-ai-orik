@@ -68,6 +68,8 @@ export interface CreateMemecoinRequest {
   streamerId: string;
   streamerName: string;
   streamId: string;
+  chainId?: number; // The blockchain network to deploy on (84532=Base Sepolia, 296=Hedera Testnet)
+  streamerWalletAddress?: string; // The streamer's wallet address to receive 20% of tokens
 }
 
 export interface CreateMemecoinResponse {

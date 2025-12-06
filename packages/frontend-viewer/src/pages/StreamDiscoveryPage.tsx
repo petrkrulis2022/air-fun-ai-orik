@@ -8,6 +8,7 @@ import { SearchBar } from "../components/SearchBar";
 import { CategoryFilter } from "../components/CategoryFilter";
 import { StreamGrid } from "../components/StreamGrid";
 import { WalletConnectModal } from "../components/WalletConnectModal";
+import { WalletInfoDisplay } from "../components/WalletInfoDisplay";
 import { useAuthStore } from "../store/authStore";
 
 const CATEGORIES = ["Gaming", "Music", "Art", "Tech", "Just Chatting", "Crypto"];
@@ -108,6 +109,7 @@ export function StreamDiscoveryPage() {
             <div className="flex items-center gap-4">
               {isAuthenticated ? (
                 <>
+                  <WalletInfoDisplay />
                   <span className="text-gray-300 text-sm">{user?.username || "Viewer"}</span>
                   <button
                     onClick={() => navigate("/portfolio")}

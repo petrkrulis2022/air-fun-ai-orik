@@ -23,7 +23,13 @@ export function useWallet() {
       const message = `Sign this message to authenticate with air.fun\n\nAddress: ${address}\nTimestamp: ${Date.now()}`;
       const signature = await signer.signMessage(message);
 
-      return { address, signature };
+      // Get the current chain ID
+      const network = await provider.getNetwork();
+      const chainId = Number(network.chainId);
+      // Map chainId to chain type (84532 = base-sepolia, 296 = hedera-testnet)
+      const chain = chainId === 296 ? "hedera" : "base";
+
+      return { address, signature, message, chain };
     } catch (err: any) {
       setError(err.message || "Failed to connect wallet");
       throw err;
@@ -32,7 +38,12 @@ export function useWallet() {
     }
   };
 
-  const connectHashio = async () => {
+  const connectHashio = async (): Promise<{
+    address: string;
+    signature: string;
+    message: string;
+    chain: string;
+  }> => {
     setIsConnecting(true);
     setError(null);
 

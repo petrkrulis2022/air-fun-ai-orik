@@ -231,13 +231,31 @@ export class MediaServerService {
     }
   }
 
+  async resumeConsumer(consumerId: string): Promise<void> {
+    const consumer = this.consumers.get(consumerId);
+    if (!consumer) {
+      throw new Error(`Consumer ${consumerId} not found`);
+    }
+    await consumer.resume();
+    console.log(`Consumer resumed: ${consumerId}`);
+  }
+
   getProducerIds(streamId: string): string[] {
     const router = this.routers.get(streamId);
-    if (!router) return [];
+    if (!router) {
+      console.log(`getProducerIds: No router found for stream ${streamId}`);
+      return [];
+    }
 
-    return Array.from(this.producers.values())
+    const producerIds = Array.from(this.producers.values())
       .filter((producer) => !producer.closed)
       .map((producer) => producer.id);
+
+    console.log(
+      `getProducerIds for stream ${streamId}: found ${producerIds.length} producers:`,
+      producerIds
+    );
+    return producerIds;
   }
 }
 

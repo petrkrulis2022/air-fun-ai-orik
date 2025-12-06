@@ -88,6 +88,8 @@ CREATE TABLE IF NOT EXISTS memecoins (
   -- Blockchain
   hedera_contract_address VARCHAR(255),
   base_contract_address VARCHAR(255),
+  bonding_curve_address VARCHAR(255),
+  creator_wallet_address VARCHAR(255),
   
   -- Metadata
   logo_url TEXT,

@@ -6,12 +6,16 @@ export const authService = {
   async connectWallet(
     walletType: WalletType,
     signature: string,
-    address: string
+    address: string,
+    message: string,
+    chain: string
   ): Promise<AuthSession> {
     return api.post<AuthSession>(API_ENDPOINTS.AUTH_WALLET_CONNECT, {
       walletType,
       signature,
       address,
+      message,
+      chain,
     });
   },
 

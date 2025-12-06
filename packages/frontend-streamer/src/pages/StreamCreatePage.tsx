@@ -1,8 +1,10 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuthStore } from "../store/authStore";
 import { useStreamStore } from "../store/streamStore";
 import { useWebRTC } from "../hooks/useWebRTC";
+import { useMediasoupProducer } from "../hooks/useMediasoupProducer";
+import { useWalletInfo } from "../hooks/useWalletInfo";
 import { streamService } from "../services/streamService";
 import type { StreamQuality } from "../types";
 
@@ -10,14 +12,16 @@ export default function StreamCreatePage() {
   const navigate = useNavigate();
   const { user } = useAuthStore();
   const { setCurrentStream } = useStreamStore();
+  const { chainId, chainName, isConnected: isWalletConnected } = useWalletInfo();
   const {
     isInitialized,
     localStream,
-    videoRef,
     error: webrtcError,
     initializeMedia,
     stopMedia,
   } = useWebRTC();
+
+  const { isPublishing, error: publishError, publish, stopPublishing } = useMediasoupProducer();
 
   const [title, setTitle] = useState("");
   const [category, setCategory] = useState("Gaming");
@@ -27,11 +31,23 @@ export default function StreamCreatePage() {
   const [error, setError] = useState<string | null>(null);
   const [showPreview, setShowPreview] = useState(false);
 
+  // Callback ref to attach stream when video element mounts
+  const videoRefCallback = useCallback(
+    (videoElement: HTMLVideoElement | null) => {
+      if (videoElement && localStream) {
+        console.log("Video element mounted, attaching stream");
+        videoElement.srcObject = localStream;
+      }
+    },
+    [localStream]
+  );
+
   useEffect(() => {
     return () => {
       stopMedia();
+      stopPublishing();
     };
-  }, [stopMedia]);
+  }, [stopMedia, stopPublishing]);
 
   const handlePreview = async () => {
     try {
@@ -57,24 +73,57 @@ export default function StreamCreatePage() {
     setError(null);
 
     try {
-      // Ensure media is initialized
-      if (!isInitialized) {
-        await initializeMedia(quality);
+      // Use existing preview stream - DO NOT reinitialize as it will stop the tracks
+      let stream = localStream;
+      if (!isInitialized || !stream) {
+        // Only initialize if we don't have a stream yet
+        stream = await initializeMedia(quality);
+        // Wait a bit for stream to stabilize
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
 
-      // Start stream on backend
+      if (!stream) {
+        throw new Error("Failed to initialize camera");
+      }
+
+      // Verify tracks are still active
+      const videoTrack = stream.getVideoTracks()[0];
+      if (!videoTrack || videoTrack.readyState !== "live") {
+        console.log("Video track not live, reinitializing...");
+        stream = await initializeMedia(quality);
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
+
+      console.log("Starting stream with user:", user.id);
+
+      // Validate wallet connection
+      if (!isWalletConnected || !chainId) {
+        throw new Error("Please connect your wallet before starting a stream");
+      }
+
+      // Start stream on backend (creates the stream record and router)
+      // Pass chainId so token is only deployed on the connected chain
       const response = await streamService.startStream(user.id, {
         title: title.trim(),
         category,
         quality,
         enableChat,
+        chainId,
       });
+
+      console.log("Stream started:", response);
+
+      // Publish video/audio to the server via WebRTC
+      console.log("Publishing video to server...");
+      await publish(response.stream.id, stream);
+      console.log("Video published successfully!");
 
       setCurrentStream(response.stream);
 
       // Navigate to streaming dashboard
       navigate(`/stream/${response.stream.id}`);
     } catch (err: any) {
+      console.error("Failed to start stream:", err);
       setError(err.message || "Failed to start stream");
       setIsStarting(false);
     }
@@ -212,7 +261,7 @@ export default function StreamCreatePage() {
               <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden">
                 {showPreview && isInitialized ? (
                   <video
-                    ref={videoRef}
+                    ref={videoRefCallback}
                     autoPlay
                     muted
                     playsInline

@@ -22,6 +22,9 @@ class RealtimeService {
   private eventLogs: Map<string, EventLog[]> = new Map();
   private eventIdCounter = 0;
 
+  // Store deployment status for replay when clients join late
+  private deploymentStatuses: Map<string, any[]> = new Map(); // streamId -> deployment events
+
   // Price update batching (Requirement 11.5, 21.2)
   private priceUpdateBatches: Map<string, BondingCurveState> = new Map(); // streamId -> latest state
   private batchTimers: Map<string, NodeJS.Timeout> = new Map(); // streamId -> timer
@@ -76,9 +79,15 @@ class RealtimeService {
         this.handleConnection(socket, data.userId, data.username);
       });
 
-      // Handle joining stream room
+      // Handle joining stream room (support both naming conventions)
       socket.on("join_stream", (data: { streamId: string }) => {
         this.joinStreamRoom(socket, data.streamId);
+      });
+
+      // Also handle hyphenated version used by frontend
+      socket.on("join-stream", (streamId: string | { streamId: string }) => {
+        const id = typeof streamId === "string" ? streamId : streamId.streamId;
+        this.joinStreamRoom(socket, id);
       });
 
       // Handle leaving stream room
@@ -172,13 +181,9 @@ class RealtimeService {
    * Add client to stream room
    */
   joinStreamRoom(socket: Socket, streamId: string): void {
-    const userId = socket.data.userId;
-    const username = socket.data.username;
-
-    if (!userId || !username) {
-      socket.emit("error", { message: "Not authenticated" });
-      return;
-    }
+    // Use socket data if authenticated, otherwise use socket ID as fallback
+    const userId = socket.data.userId || socket.id;
+    const username = socket.data.username || `User-${socket.id.slice(0, 6)}`;
 
     // Join the room
     socket.join(streamId);
@@ -205,6 +210,15 @@ class RealtimeService {
       streamId,
       viewerCount: roomInfo.connections.size,
     });
+
+    // Replay deployment status if there's an ongoing deployment
+    const deploymentEvents = this.getDeploymentStatus(streamId);
+    if (deploymentEvents.length > 0) {
+      console.log(`Replaying ${deploymentEvents.length} deployment events to ${username}`);
+      for (const event of deploymentEvents) {
+        socket.emit("deployment_status", event);
+      }
+    }
 
     // Broadcast updated viewer count to all in room
     this.io?.to(streamId).emit("viewer_count_update", {
@@ -422,6 +436,50 @@ class RealtimeService {
 
     // Broadcast to all in room with event ID for client tracking
     this.io.to(streamId).emit("graduation_announcement", { ...graduation, eventId });
+  }
+
+  /**
+   * Broadcast blockchain deployment status update to stream
+   * Used to show live token deployment progress to the streamer
+   */
+  broadcastDeploymentStatus(streamId: string, deploymentStatus: any): void {
+    if (!this.io) {
+      console.warn("Socket.io not initialized, skipping deployment broadcast");
+      return;
+    }
+
+    // Store deployment status for replay when clients join late
+    if (!this.deploymentStatuses.has(streamId)) {
+      this.deploymentStatuses.set(streamId, []);
+    }
+    this.deploymentStatuses.get(streamId)!.push({
+      ...deploymentStatus,
+      timestamp: Date.now(),
+    });
+
+    // Clear old deployment statuses after 10 minutes
+    if (
+      deploymentStatus.step === "deployment_complete" ||
+      deploymentStatus.step === "deployment_failed"
+    ) {
+      setTimeout(
+        () => {
+          this.deploymentStatuses.delete(streamId);
+        },
+        10 * 60 * 1000
+      );
+    }
+
+    // Broadcast to all in room (primarily the streamer)
+    this.io.to(streamId).emit("deployment_status", deploymentStatus);
+    console.log(`Broadcasted deployment status to stream ${streamId}:`, deploymentStatus.step);
+  }
+
+  /**
+   * Get stored deployment status for a stream (for late-joining clients)
+   */
+  getDeploymentStatus(streamId: string): any[] {
+    return this.deploymentStatuses.get(streamId) || [];
   }
 
   /**

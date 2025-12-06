@@ -66,6 +66,7 @@ export interface StreamConfig {
   category: string;
   quality: StreamQuality;
   enableChat: boolean;
+  chainId?: number; // The blockchain network the streamer is connected to
 }
 
 export interface StreamSummary {

@@ -1,6 +1,6 @@
 // Video player component for WebRTC streams
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 
 interface VideoPlayerProps {
   videoTrack: MediaStreamTrack | null;
@@ -18,61 +18,127 @@ export function VideoPlayer({
   onReconnect,
 }: VideoPlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const [isMuted, setIsMuted] = useState(true);
 
   useEffect(() => {
     if (!videoRef.current) return;
 
-    const stream = new MediaStream();
-    if (videoTrack) stream.addTrack(videoTrack);
-    if (audioTrack) stream.addTrack(audioTrack);
+    const video = videoRef.current;
 
-    videoRef.current.srcObject = stream;
-    videoRef.current.play().catch((err) => {
-      console.error("Failed to play video:", err);
-    });
+    if (videoTrack || audioTrack) {
+      const stream = new MediaStream();
+
+      if (videoTrack) {
+        stream.addTrack(videoTrack);
+        console.log(
+          "Video track added to stream, readyState:",
+          videoTrack.readyState,
+          "enabled:",
+          videoTrack.enabled,
+          "muted:",
+          videoTrack.muted
+        );
+
+        // Check if we're receiving data
+        const checkVideoData = setInterval(() => {
+          if (video.readyState >= 2) {
+            console.log(
+              "Video has enough data, dimensions:",
+              video.videoWidth,
+              "x",
+              video.videoHeight
+            );
+            clearInterval(checkVideoData);
+          } else {
+            console.log("Video readyState:", video.readyState, "(waiting for data...)");
+          }
+        }, 1000);
+
+        // Stop checking after 10 seconds
+        setTimeout(() => clearInterval(checkVideoData), 10000);
+      }
+
+      if (audioTrack) {
+        stream.addTrack(audioTrack);
+        console.log(
+          "Audio track added to stream, readyState:",
+          audioTrack.readyState,
+          "enabled:",
+          audioTrack.enabled
+        );
+      }
+
+      video.srcObject = stream;
+
+      // Log video element events for debugging
+      video.onloadedmetadata = () =>
+        console.log("Video: loadedmetadata, dimensions:", video.videoWidth, "x", video.videoHeight);
+      video.onloadeddata = () => console.log("Video: loadeddata");
+      video.oncanplay = () => console.log("Video: canplay");
+      video.onplaying = () => console.log("Video: playing");
+      video.onwaiting = () => console.log("Video: waiting for data");
+
+      video.play().catch((err) => {
+        console.log("Autoplay blocked, user interaction needed:", err.message);
+      });
+    }
 
     return () => {
-      if (videoRef.current) {
-        videoRef.current.srcObject = null;
-      }
+      video.srcObject = null;
     };
   }, [videoTrack, audioTrack]);
 
+  const handleUnmute = () => {
+    setIsMuted(false);
+    if (videoRef.current) {
+      videoRef.current.muted = false;
+    }
+  };
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900 rounded-lg">
+        <div className="text-center p-8">
+          <p className="text-red-400 mb-4">{error}</p>
+          <button
+            onClick={onReconnect}
+            className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <div className="flex items-center justify-center h-full bg-gray-900 rounded-lg">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-400">Connecting to stream...</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden">
-      <video ref={videoRef} className="w-full h-full" autoPlay playsInline muted={false} />
+    <div className="relative w-full h-full min-h-[300px] bg-black rounded-lg overflow-hidden">
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted={isMuted}
+        className="absolute inset-0 w-full h-full object-contain"
+      />
 
-      {/* Loading overlay */}
-      {!isConnected && !error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="text-center">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mb-4"></div>
-            <p className="text-white">Connecting to stream...</p>
-          </div>
-        </div>
-      )}
-
-      {/* Error overlay */}
-      {error && (
-        <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-75">
-          <div className="text-center max-w-md px-4">
-            <p className="text-red-400 mb-4">{error}</p>
-            <button
-              onClick={onReconnect}
-              className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg transition-colors"
-            >
-              Reconnect
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Live indicator */}
-      {isConnected && (
-        <div className="absolute top-4 left-4 bg-red-600 text-white px-3 py-1 rounded-full text-sm font-bold flex items-center gap-2">
-          <span className="w-2 h-2 bg-white rounded-full animate-pulse"></span>
-          LIVE
-        </div>
+      {isMuted && (
+        <button
+          onClick={handleUnmute}
+          className="absolute bottom-4 right-4 px-4 py-2 bg-gray-800 text-white rounded-lg hover:bg-gray-700 flex items-center gap-2"
+        >
+          <span>��</span> Click to Unmute
+        </button>
       )}
     </div>
   );

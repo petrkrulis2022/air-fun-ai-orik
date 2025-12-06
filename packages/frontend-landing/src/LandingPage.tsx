@@ -37,7 +37,7 @@ export function LandingPage() {
           {/* CTA Buttons */}
           <div className="flex flex-col md:flex-row gap-6 justify-center items-center mb-16">
             <a
-              href="http://localhost:5191"
+              href="http://localhost:5181"
               target="_blank"
               rel="noopener noreferrer"
               className="group relative px-8 py-4 bg-gradient-to-r from-neonBlue to-neonPurple rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 neon-glow hover:neon-glow-purple min-w-[280px]"
@@ -47,7 +47,7 @@ export function LandingPage() {
             </a>
 
             <a
-              href="http://localhost:5192"
+              href="http://localhost:5182"
               target="_blank"
               rel="noopener noreferrer"
               className="group relative px-8 py-4 bg-gradient-to-r from-neonPurple to-neonGreen rounded-xl font-bold text-lg transition-all duration-300 hover:scale-105 neon-glow-purple hover:neon-glow-green min-w-[280px]"
@@ -182,7 +182,7 @@ export function LandingPage() {
 
           <div className="flex flex-col md:flex-row gap-6 justify-center items-center">
             <a
-              href="http://localhost:5191"
+              href="http://localhost:5181"
               target="_blank"
               rel="noopener noreferrer"
               className="px-10 py-5 bg-gradient-to-r from-neonBlue to-neonPurple rounded-xl font-bold text-xl transition-all duration-300 hover:scale-110 neon-glow min-w-[300px]"
@@ -192,7 +192,7 @@ export function LandingPage() {
             </a>
 
             <a
-              href="http://localhost:5192"
+              href="http://localhost:5182"
               target="_blank"
               rel="noopener noreferrer"
               className="px-10 py-5 bg-gradient-to-r from-neonPurple to-neonGreen rounded-xl font-bold text-xl transition-all duration-300 hover:scale-110 neon-glow-green min-w-[300px]"

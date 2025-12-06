@@ -79,19 +79,27 @@ export class StreamingService {
 
     const streamId = streamData.id;
 
-    // Create WebRTC router for this stream
-    await mediaServerService.createRouter(streamId);
+    // Try to create WebRTC router/transport (may fail if mediasoup not available)
+    let transportParams: any = null;
+    try {
+      // Create WebRTC router for this stream
+      await mediaServerService.createRouter(streamId);
 
-    // Create producer transport for streamer
-    const { params: transportParams } = await mediaServerService.createWebRtcTransport(
-      streamId,
-      true
-    );
+      // Create producer transport for streamer
+      const result = await mediaServerService.createWebRtcTransport(streamId, true);
+      transportParams = result.params;
+    } catch (mediaError) {
+      console.warn(`WebRTC setup skipped (mediasoup not available): ${mediaError}`);
+      // Continue without WebRTC - stream record is still created
+    }
 
     // Trigger automatic memecoin creation (async, don't block stream start)
-    this.createMemecoinForStream(streamId, streamerId, streamerName).catch((error) => {
-      console.error(`Failed to create memecoin for stream ${streamId}:`, error);
-    });
+    // Pass chainId so token is only deployed on the connected chain
+    this.createMemecoinForStream(streamId, streamerId, streamerName, config.chainId).catch(
+      (error) => {
+        console.error(`Failed to create memecoin for stream ${streamId}:`, error);
+      }
+    );
 
     // Generate thumbnail (async, don't block stream start)
     this.generateThumbnail(streamId).catch((error) => {
@@ -130,28 +138,54 @@ export class StreamingService {
 
     return {
       stream: streamRecord,
-      transportOptions: {
-        id: transportParams.id,
-        iceParameters: transportParams.iceParameters,
-        iceCandidates: transportParams.iceCandidates,
-        dtlsParameters: transportParams.dtlsParameters,
-      },
+      transportOptions: transportParams
+        ? {
+            id: transportParams.id,
+            iceParameters: transportParams.iceParameters,
+            iceCandidates: transportParams.iceCandidates,
+            dtlsParameters: transportParams.dtlsParameters,
+          }
+        : null,
     };
   }
 
   /**
    * Create memecoin for stream (called automatically on stream start)
+   * Only deploys to the chain the streamer is connected to
    */
   private async createMemecoinForStream(
     streamId: string,
     streamerId: string,
-    streamerName: string
+    streamerName: string,
+    chainId?: number
   ): Promise<void> {
     try {
+      // Get the streamer's wallet address for the appropriate chain
+      let streamerWalletAddress: string | undefined;
+
+      if (chainId) {
+        const chain = chainId === 296 ? "hedera" : "base";
+        const { data: walletData } = await supabase
+          .from("wallet_addresses")
+          .select("address")
+          .eq("user_id", streamerId)
+          .eq("chain", chain)
+          .single();
+
+        if (walletData?.address) {
+          streamerWalletAddress = walletData.address;
+          console.log(`Found streamer wallet for ${chain}: ${streamerWalletAddress}`);
+        } else {
+          console.warn(`No ${chain} wallet found for streamer ${streamerId}`);
+        }
+      }
+
       const result = await tokenFactoryService.createMemecoin({
         streamerId,
         streamerName,
         streamId,
+        chainId,
+        streamerWalletAddress,
       });
 
       // Update stream with token info
@@ -498,6 +532,13 @@ export class StreamingService {
    */
   getRouterRtpCapabilities(streamId: string): mediasoupTypes.RtpCapabilities | undefined {
     return mediaServerService.getRouterRtpCapabilities(streamId);
+  }
+
+  /**
+   * Resume a consumer on the server side
+   */
+  async resumeConsumer(consumerId: string): Promise<void> {
+    await mediaServerService.resumeConsumer(consumerId);
   }
 
   /**

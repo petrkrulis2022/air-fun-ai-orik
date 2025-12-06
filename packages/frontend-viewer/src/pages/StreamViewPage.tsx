@@ -220,7 +220,7 @@ export function StreamViewPage() {
           {/* Main content - Video and Info */}
           <div className="lg:col-span-2 space-y-6">
             {/* Video Player with 3D Agents */}
-            <div className="relative">
+            <div className="relative aspect-video bg-black rounded-lg overflow-hidden">
               <VideoPlayer
                 videoTrack={videoTrack}
                 audioTrack={audioTrack}

@@ -17,10 +17,12 @@ export const API_ENDPOINTS = {
   STREAMS_HOT: "/streams/hot",
   STREAMS_STATUS: (id: string) => `/streams/${id}/status`,
   STREAMS_RTP_CAPABILITIES: (id: string) => `/streams/${id}/rtp-capabilities`,
+  STREAMS_PRODUCERS: (id: string) => `/streams/${id}/producers`,
   STREAMS_TRANSPORT_CONSUMER: (id: string) => `/streams/${id}/transport/consumer`,
   STREAMS_TRANSPORT_CONNECT: (transportId: string) => `/streams/transport/${transportId}/connect`,
   STREAMS_TRANSPORT_CONSUME: (streamId: string, transportId: string) =>
     `/streams/${streamId}/transport/${transportId}/consume`,
+  STREAMS_CONSUMER_RESUME: (consumerId: string) => `/streams/consumer/${consumerId}/resume`,
 
   // Tokens
   TOKEN_BY_ID: (id: string) => `/tokens/${id}`,

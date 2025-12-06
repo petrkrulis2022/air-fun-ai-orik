@@ -47,8 +47,15 @@ export const sanitizeObject = (obj: any): any => {
 
 /**
  * Middleware to sanitize request body
+ * Skip sanitization for WebRTC transport endpoints that need raw data
  */
 export const sanitizeInput = (req: Request, res: Response, next: NextFunction) => {
+  // Skip sanitization for WebRTC transport routes which need raw technical data
+  // These routes handle RTP parameters with mime types like "video/VP8"
+  if (req.path.includes("/transport/") || req.path.includes("/rtp-capabilities")) {
+    return next();
+  }
+
   if (req.body) {
     req.body = sanitizeObject(req.body);
   }

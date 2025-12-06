@@ -23,8 +23,14 @@ export default function WalletConnectModal({
   const handleMetaMaskConnect = async () => {
     try {
       setAuthError(null);
-      const { address, signature } = await connectMetaMask();
-      const session = await authService.connectWallet("metamask", signature, address);
+      const { address, signature, message, chain } = await connectMetaMask();
+      const session = await authService.connectWallet(
+        "metamask",
+        signature,
+        address,
+        message,
+        chain
+      );
       setAuth(session);
       onSuccess?.();
       onClose();
@@ -36,8 +42,8 @@ export default function WalletConnectModal({
   const handleHashioConnect = async () => {
     try {
       setAuthError(null);
-      const { address, signature } = await connectHashio();
-      const session = await authService.connectWallet("hashio", signature, address);
+      const { address, signature, message, chain } = await connectHashio();
+      const session = await authService.connectWallet("hashio", signature, address, message, chain);
       setAuth(session);
       onSuccess?.();
       onClose();
