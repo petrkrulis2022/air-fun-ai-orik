@@ -124,7 +124,7 @@ When a streamer creates a stream, the following happens **automatically**:
 Every time a viewer buys tokens:
 
 ```
-Viewer pays 100 USDC
+Viewer pays 100 USDC (USDh on Hedera)
         │
         ▼
 ┌───────────────────────────────────────┐
@@ -133,12 +133,12 @@ Viewer pays 100 USDC
 │  Split: 98% / 2%                       │
 │                                        │
 │  ┌─────────────────────────────────┐   │
-│  │ 98 USDC → Streamer's Wallet     │   │
+│  │ 98 USDC (USDh) → Streamer       │   │
 │  │ (Creator Fee)                   │   │
 │  └─────────────────────────────────┘   │
 │                                        │
 │  ┌─────────────────────────────────┐   │
-│  │ 2 USDC → Platform Wallet        │   │
+│  │ 2 USDC (USDh) → Platform        │   │
 │  │ (Platform Fee)                  │   │
 │  └─────────────────────────────────┘   │
 │                                        │
@@ -185,14 +185,14 @@ Viewer pays 100 USDC
 │  ├── Sign authentication message                                 │
 │  └── Wallet connected: 0xDEF...456                               │
 │                                                                  │
-│  Step 2: Approve USDC spending (first time only)                 │
-│  ├── Click "Approve USDC"                                        │
-│  ├── MetaMask popup: Approve BondingCurve to spend USDC          │
+│  Step 2: Approve USDC (USDh on Hedera) spending (first time only)│
+│  ├── Click "Approve USDC (USDh)"                                 │
+│  ├── MetaMask popup: Approve BondingCurve to spend stablecoin    │
 │  └── Confirm transaction (viewer pays gas)                       │
 │                                                                  │
 │  Step 3: Purchase tokens                                         │
 │  ├── Enter amount: "Buy 1,000 tokens"                            │
-│  ├── UI shows: Cost = X USDC                                     │
+│  ├── UI shows: Cost = X USDC (USDh on Hedera)                    │
 │  ├── Set slippage tolerance (default 2%)                         │
 │  ├── Click "Purchase"                                            │
 │  ├── MetaMask popup: Confirm transaction                         │
@@ -207,7 +207,7 @@ Viewer pays 100 USDC
 │  FUND FLOW:                                                      │
 │  ┌──────────────────────────────────────────────────────────┐    │
 │  │  Viewer Wallet                                           │    │
-│  │  └── Sends: X USDC (to BondingCurve contract)            │    │
+│  │  └── Sends: X USDC (USDh on Hedera) to BondingCurve      │    │
 │  │  └── Receives: Y Memecoin tokens                         │    │
 │  │  └── Pays: Gas fee in ETH/HBAR                           │    │
 │  └──────────────────────────────────────────────────────────┘    │
@@ -217,12 +217,12 @@ Viewer pays 100 USDC
 
 ### Viewer Gas Costs
 
-| Action          | Who Pays Gas? | Estimated Cost |
-| --------------- | ------------- | -------------- |
-| Connect wallet  | No gas        | Free           |
-| Approve USDC    | Viewer        | ~0.001 ETH     |
-| Purchase tokens | Viewer        | ~0.002 ETH     |
-| View stream     | No gas        | Free           |
+| Action                        | Who Pays Gas? | Estimated Cost      |
+| ----------------------------- | ------------- | ------------------- |
+| Connect wallet                | No gas        | Free                |
+| Approve USDC (USDh on Hedera) | Viewer        | ~0.001 ETH (~HBAR)  |
+| Purchase tokens               | Viewer        | ~0.002 ETH (~HBAR)  |
+| View stream                   | No gas        | Free                |
 
 ---
 
@@ -274,7 +274,7 @@ Revenue = 2% of all token purchases
 
 Example:
 ├── Stream has $100,000 total purchases
-├── Platform receives: $2,000 USDC
+├── Platform receives: $2,000 USDC (USDh on Hedera)
 └── Deposited directly to platform wallet
 ```
 
@@ -403,8 +403,8 @@ Example prices:
 │  └── Pays: Gas fee (ETH/HBAR)                                    │
 │                                                                  │
 │  BondingCurve Contract (instant distribution)                    │
-│  ├── 98% USDC → Streamer Wallet                                  │
-│  ├── 2% USDC → Platform Wallet                                   │
+│  ├── 98% USDC (USDh on Hedera) → Streamer Wallet                 │
+│  ├── 2% USDC (USDh on Hedera) → Platform Wallet                  │
 │  └── Y Tokens → Viewer Wallet                                    │
 │                                                                  │
 │  ─────────────────────────────────────────────────────────────   │
@@ -515,7 +515,7 @@ Usage: All token purchases on Hedera
 │                                                                  │
 │  VIEWER (has USDC/USDh in wallet)                                │
 │  │                                                               │
-│  │ 1. Approve BondingCurve to spend USDC                         │
+│  │ 1. Approve BondingCurve to spend USDC (USDh on Hedera)        │
 │  │    USDC.approve(bondingCurveAddress, amount)                  │
 │  │                                                               │
 │  │ 2. Purchase tokens                                            │
@@ -524,14 +524,14 @@ Usage: All token purchases on Hedera
 │  ▼                                                               │
 │  BONDING CURVE CONTRACT                                          │
 │  │                                                               │
-│  │ 1. Pulls USDC from viewer                                     │
+│  │ 1. Pulls USDC (USDh on Hedera) from viewer                    │
 │  │    USDC.transferFrom(viewer, bondingCurve, cost)              │
 │  │                                                               │
 │  │ 2. Calculates fee split                                       │
 │  │    creatorFee = cost * 98%                                    │
 │  │    platformFee = cost * 2%                                    │
 │  │                                                               │
-│  │ 3. Distributes USDC                                           │
+│  │ 3. Distributes USDC (USDh on Hedera)                          │
 │  │    USDC.transfer(creator, creatorFee)                         │
 │  │    USDC.transfer(platformWallet, platformFee)                 │
 │  │                                                               │
