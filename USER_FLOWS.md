@@ -7,13 +7,17 @@ Complete guide to user interactions, token economics, and fund flows in the air.
 ## 📋 Table of Contents
 
 1. [Platform Overview](#platform-overview)
-2. [Streamer Flow](#streamer-flow)
-3. [Viewer Flow](#viewer-flow)
-4. [Platform Flow](#platform-flow)
-5. [Token Economics](#token-economics)
-6. [Wallet & Fund Distribution](#wallet--fund-distribution)
-7. [Graduation to DEX](#graduation-to-dex)
-8. [Stablecoin Integration](#stablecoin-integration)
+2. [Deployment Modes](#deployment-modes)
+3. [Streamer Flow](#streamer-flow)
+4. [Viewer Flow](#viewer-flow)
+5. [AI Agents System](#ai-agents-system)
+6. [Platform Flow](#platform-flow)
+7. [Token Economics](#token-economics)
+8. [Wallet & Fund Distribution](#wallet--fund-distribution)
+9. [Graduation to DEX](#graduation-to-dex)
+10. [Anti-Bot Protection](#anti-bot-protection)
+11. [Stablecoin Integration](#stablecoin-integration)
+12. [Future Development](#future-development)
 
 ---
 
@@ -27,10 +31,86 @@ air.fun is a decentralized livestreaming platform where:
 
 ### Supported Blockchains
 
-| Chain          | Stablecoin | Platform Token |
-| -------------- | ---------- | -------------- |
-| Base Sepolia   | USDC       | AIR            |
-| Hedera Testnet | USDh       | AIR            |
+| Chain          | Stablecoin | Platform Token | Status         |
+| -------------- | ---------- | -------------- | -------------- |
+| Base Sepolia   | USDC       | AIR            | ✅ Live        |
+| Hedera Testnet | USDh       | AIR            | ✅ Live        |
+| Solana Devnet  | USDh (TBD) | AIR            | ⏳ Coming Soon |
+
+> **Note:** USDair will replace all stablecoins (USDC, USDh) as the unified platform stablecoin across all chains in a future update.
+
+---
+
+## Deployment Modes
+
+Air.Fun operates in **two deployment modes** that share the same AI agents database:
+
+### Mode 1: Native Platform (Standalone App)
+
+Full-featured air.fun application with complete streaming and viewing capabilities.
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  NATIVE PLATFORM                                                 │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Streamer Side:                                                  │
+│  ├── Opens air.fun streamer app                                  │
+│  ├── Creates stream with title, thumbnail                        │
+│  ├── Memecoin auto-deployed on stream start                      │
+│  ├── Places AI agents on screen (drag & drop)                    │
+│  └── Broadcasts WebRTC stream to air.fun servers                 │
+│                                                                  │
+│  Viewer Side:                                                    │
+│  ├── Opens air.fun viewer app or web                             │
+│  ├── Sees streamer video + floating AI agents                    │
+│  ├── Clicks agents → Buys memecoin, tips, interacts              │
+│  └── Participates in games/challenges                            │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Mode 2: Filter/Extension (Chrome Browser Extension)
+
+Air.Fun as an **overlay layer** on existing streaming platforms (Twitch, YouTube, Kick, pump.fun).
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  FILTER MODE (Browser Extension)                                 │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Streamer Side:                                                  │
+│  ├── Installs Air.Fun Chrome Extension                           │
+│  ├── Streams on Twitch/YouTube as normal                         │
+│  ├── Extension overlays AI agents onto stream                    │
+│  ├── Agent positions synced to viewers with extension            │
+│  └── Continues streaming on Twitch/YouTube as usual              │
+│                                                                  │
+│  Viewer Side:                                                    │
+│  ├── Installs Air.Fun Chrome Extension                           │
+│  ├── Watches stream on Twitch/YouTube                            │
+│  ├── Extension renders agents as interactive overlay             │
+│  ├── Clicks agents → Same functionality as native app            │
+│  └── Buys memecoin, tips, interacts                              │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Shared AI Agents Database
+
+Both modes share the **same Supabase database** for AI agents:
+
+| Field              | Description                                                             |
+| ------------------ | ----------------------------------------------------------------------- |
+| `id`               | Unique agent identifier                                                 |
+| `name`             | Agent display name                                                      |
+| `type`             | `payable_cube` \| `interactive_jam` \| `prediction_bot` \| `game_buddy` |
+| `deployment_mode`  | `platform` \| `filter` \| `both`                                        |
+| `stream_id`        | Associated stream                                                       |
+| `wallet_address`   | Streamer's wallet (receives payments)                                   |
+| `position`         | Screen coordinates (x, y, z)                                            |
+| `erc8004_identity` | On-chain agent identity                                                 |
+| `story_ip_id`      | Story Protocol IP Asset ID                                              |
 
 ---
 
@@ -217,12 +297,131 @@ Viewer pays 100 USDC (USDh on Hedera)
 
 ### Viewer Gas Costs
 
-| Action                        | Who Pays Gas? | Estimated Cost      |
-| ----------------------------- | ------------- | ------------------- |
-| Connect wallet                | No gas        | Free                |
-| Approve USDC (USDh on Hedera) | Viewer        | ~0.001 ETH (~HBAR)  |
-| Purchase tokens               | Viewer        | ~0.002 ETH (~HBAR)  |
-| View stream                   | No gas        | Free                |
+| Action                        | Who Pays Gas? | Estimated Cost     |
+| ----------------------------- | ------------- | ------------------ |
+| Connect wallet                | No gas        | Free               |
+| Approve USDC (USDh on Hedera) | Viewer        | ~0.001 ETH (~HBAR) |
+| Purchase tokens               | Viewer        | ~0.002 ETH (~HBAR) |
+| View stream                   | No gas        | Free               |
+
+---
+
+## AI Agents System
+
+AI Agents are interactive 3D objects that streamers place on their streams. Viewers click agents to purchase memecoins, tip, or interact.
+
+### Agent Types
+
+| Type                | Purpose                           | Interaction            |
+| ------------------- | --------------------------------- | ---------------------- |
+| **Payable Cube**    | Buy button for memecoin purchases | Click → Buy tokens     |
+| **Interactive Jam** | Fun interactive element           | Click → Trigger action |
+| **Prediction Bot**  | Betting/prediction markets        | Click → Place bet      |
+| **Game Buddy**      | Gamification challenges           | Click → Play game      |
+
+### Agent Identity (ERC-8004)
+
+Every agent has an **on-chain identity** using the ERC-8004 standard:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  AGENT IDENTITY (ERC-8004)                                       │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Agent Created:                                                  │
+│  ├── ERC-8004 Identity NFT minted on-chain                       │
+│  ├── Unique agent ID stored in identity contract                 │
+│  ├── Wallet address linked (streamer's wallet)                   │
+│  └── Metadata: name, type, capabilities                          │
+│                                                                  │
+│  Identity Properties:                                            │
+│  ├── Unique identifier (on-chain)                                │
+│  ├── Ownership (streamer wallet)                                 │
+│  ├── Capabilities (can receive payments, etc.)                   │
+│  └── Reputation/history (future)                                 │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Story Protocol IP Rights
+
+Agents are registered as **IP Assets** on Story Protocol:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  STORY PROTOCOL INTEGRATION                                      │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  When Agent is Created:                                          │
+│  ├── ERC-8004 identity minted                                    │
+│  ├── IP Asset registered on Story Protocol                       │
+│  ├── PIL (Programmable IP License) attached                      │
+│  └── Ownership tied to streamer's wallet                         │
+│                                                                  │
+│  IP Rights Include:                                              │
+│  ├── Commercial use rights                                       │
+│  ├── Derivative licensing (5% royalty default)                   │
+│  ├── Attribution requirements                                    │
+│  └── Transferable ownership                                      │
+│                                                                  │
+│  Derivative Licensing:                                           │
+│  ├── Streamer A creates "CoolBot" agent                          │
+│  ├── Streamer B licenses CoolBot for their stream                │
+│  ├── Story Protocol routes 5% of earnings to Streamer A          │
+│  └── All tracked on-chain transparently                          │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### IPFi Marketplace (Trading AI Agents)
+
+Agents can be **bought, sold, and traded** on the IPFi marketplace:
+
+| Action                   | Description                                   |
+| ------------------------ | --------------------------------------------- |
+| **List Agent**           | Streamer lists agent for sale with price      |
+| **Buy Agent**            | Buyer purchases full ownership of agent       |
+| **License Agent**        | Rent agent for derivative use (royalty-based) |
+| **Trade Royalty Tokens** | Fractional ownership via royalty tokens       |
+
+### Agent Payment Flow
+
+When a viewer clicks an agent to buy memecoin:
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  AGENT-MEDIATED PURCHASE FLOW                                    │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Viewer clicks agent on stream                                │
+│  2. Agent validates click is from real human (anti-bot)          │
+│  3. Purchase modal opens with amount input                       │
+│  4. Viewer enters USDC/USDh (USDair in future) amount            │
+│  5. Single transaction executes:                                 │
+│     ├── Approve token spending                                   │
+│     ├── Set spending limit                                       │
+│     └── Execute purchase                                         │
+│  6. USDC/USDh sent to BondingCurve contract                      │
+│  7. Memecoin tokens sent to viewer                               │
+│  8. 98% of payment → Streamer wallet (via agent)                 │
+│  9. 2% of payment → Platform wallet                              │
+│                                                                  │
+│  IMPORTANT: All payments go to streamer's wallet                 │
+│  (Agent wallet = Streamer wallet = Deployer wallet)              │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Agent Interactions (Voice Chat - Future)
+
+> **🔮 Future Development:** Voice commands to agents are planned but not yet implemented.
+
+| Interaction        | Status         | Description                     |
+| ------------------ | -------------- | ------------------------------- |
+| Click to buy       | ✅ Implemented | Purchase memecoin via agent     |
+| Click to tip       | ✅ Implemented | Direct payment to streamer      |
+| Voice commands     | ⏳ Placeholder | "Move left", "Move right", etc. |
+| Agent gamification | ⏳ Placeholder | Games, challenges, rewards      |
 
 ---
 
@@ -487,6 +686,90 @@ After graduation:
 
 ---
 
+## Anti-Bot Protection
+
+### The Bot Problem
+
+Traditional DEXs and memecoin platforms suffer from **massive bot manipulation**:
+
+- 70%+ of tokens on pump.fun created/manipulated by bots
+- Bots front-run trades, snipe launches
+- Unfair for human traders
+- Damages community trust
+
+### Air.Fun Solution: Agent-Mediated Trading
+
+**ALL purchases on Air.Fun MUST go through clickable AI agents.**
+
+```
+┌──────────────────────────────────────────────────────────────────┐
+│  ANTI-BOT MECHANISM                                              │
+├──────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  Traditional DEX:                                                │
+│  └── Bot sends transaction directly to smart contract ❌         │
+│                                                                  │
+│  Air.Fun:                                                        │
+│  └── ALL purchases MUST click interactive AI agent ✅            │
+│                                                                  │
+│  Flow:                                                           │
+│  1. Viewer sees agent on stream                                  │
+│  2. Viewer clicks agent (mouse/touch)                            │
+│  3. Agent validates human interaction:                           │
+│     ├── Click coordinates within agent bounds                    │
+│     ├── Click timing within human range                          │
+│     ├── Active WebRTC session (watching stream)                  │
+│     └── Browser fingerprint validation                           │
+│  4. Only then: Purchase transaction submitted                    │
+│                                                                  │
+│  Result:                                                         │
+│  ├── Bots cannot interact with agents programmatically           │
+│  ├── Must have active stream viewing session                     │
+│  ├── Click validation prevents automation                        │
+│  └── 95%+ bot exclusion (vs 30% on pump.fun)                     │
+│                                                                  │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+### Post-Graduation: Liquidity Pool Trading
+
+**Challenge:** After graduation, memecoin trades on MEMECOIN/AIR liquidity pool. How to prevent bots?
+
+**Solution Options:**
+
+| Option                        | Description                               | Trade-off                          |
+| ----------------------------- | ----------------------------------------- | ---------------------------------- |
+| **Agent-gated LP access**     | Require agent click even for LP trades    | Lower liquidity, but bot-free      |
+| **Whitelist system**          | Only verified humans can trade on LP      | Requires KYC/verification          |
+| **Time-locked access**        | Stream viewers get priority access window | Bots wait, humans trade first      |
+| **Fee premium for direct LP** | Higher fees for non-agent trades          | Bots pay more, subsidizes platform |
+
+**Current Implementation:** Agent-gated during bonding curve phase. Post-graduation LP trading is open (standard DEX behavior).
+
+### Fee Impact Analysis
+
+**Question:** Do we lose fees by excluding bots?
+
+| Scenario                       | Bot Volume | Human Volume | Platform Revenue             |
+| ------------------------------ | ---------- | ------------ | ---------------------------- |
+| **With Bots** (pump.fun style) | 70%        | 30%          | Higher volume, lower quality |
+| **Bot-Free** (Air.Fun)         | 5%         | 95%          | Lower volume, higher quality |
+
+**Key Insight:** Bot volume is often wash trading (fake volume). Real revenue comes from:
+
+- Human engagement (repeat buyers)
+- Community building (loyal viewers)
+- Streamer growth (attracts more streamers)
+
+**Making Up for Lost Bot Fees:**
+
+1. **Premium Features:** Charge for advanced agent customization
+2. **IPFi Marketplace Fees:** Take cut of agent trading
+3. **Graduation Bonus:** Platform receives AIR tokens at graduation
+4. **Subscription Tiers:** Premium streamer features
+
+---
+
 ## Stablecoin Integration
 
 ### USDC on Base Sepolia
@@ -577,6 +860,81 @@ Usage: All token purchases on Hedera
 
 ---
 
+## Future Development
+
+### 🔮 USDair Stablecoin
+
+**Status:** Planned - Will replace USDC/USDh across all chains
+
+USDair is the **unified platform stablecoin** that will be deployed identically on all supported chains:
+
+| Feature                       | Description                        |
+| ----------------------------- | ---------------------------------- |
+| **Cross-chain consistency**   | Same token on Base, Hedera, Solana |
+| **x402 Protocol Integration** | Built-in agent payment support     |
+| **Platform control**          | Air.Fun manages stablecoin supply  |
+| **1:1 USDC backing**          | Fully collateralized               |
+
+**x402 Agent Payments:** USDair will natively support the x402 protocol for agent-to-agent and agent-to-viewer payments, enabling:
+
+- Agent pays viewer for winning game
+- Agent purchases service from another agent
+- Automated micro-payments
+
+### 🔮 LiveCoin (Temporary Stream Token)
+
+**Status:** Planned - High-volatility gamification token
+
+| Characteristic | Description                                   |
+| -------------- | --------------------------------------------- |
+| **Lifespan**   | Single stream only (expires when stream ends) |
+| **Volatility** | Higher than memecoin (lower K value)          |
+| **Purpose**    | Real-time betting, predictions, games         |
+| **Conversion** | Can convert to memecoin at end of stream      |
+
+**Use Cases:**
+
+- Viewers bet LiveCoin on stream outcomes
+- Price spikes during exciting moments
+- Winners convert LiveCoin → Memecoin
+
+### 🔮 Solana Devnet Integration
+
+**Status:** Planned - Contracts not yet deployed
+
+| Contract                   | Solana Devnet Address | Status     |
+| -------------------------- | --------------------- | ---------- |
+| **AIR Token**              | TBD                   | ⏳ Pending |
+| **USDh/USDair**            | TBD                   | ⏳ Pending |
+| **Memecoin Factory**       | TBD                   | ⏳ Pending |
+| **Bonding Curve**          | TBD                   | ⏳ Pending |
+| **Liquidity Pool Factory** | TBD                   | ⏳ Pending |
+
+### 🔮 Voice Commands to Agents
+
+**Status:** Placeholder - Infrastructure ready, not implemented
+
+| Command         | Action                      |
+| --------------- | --------------------------- |
+| "Move left"     | Agent moves left on screen  |
+| "Move right"    | Agent moves right on screen |
+| "Move up/down"  | Agent moves up/down         |
+| "Talk"          | Agent speaks (TTS)          |
+| Custom commands | Streamer-defined actions    |
+
+### 🔮 Agent Gamification
+
+**Status:** Placeholder - Future feature
+
+| Game Type          | Description                              |
+| ------------------ | ---------------------------------------- |
+| **Challenges**     | Viewers bet on streamer completing tasks |
+| **Predictions**    | Bet on stream outcomes                   |
+| **Agent Battles**  | Viewers fund competing agents            |
+| **Treasure Hunts** | Find hidden agents for rewards           |
+
+---
+
 ## Quick Reference
 
 ### Key Addresses (Base Sepolia)
@@ -587,6 +945,26 @@ USDC:                  0x036CbD53842c5426634e7929541eC2318f3dCF7e
 AIR Token:             0xB2D4ED0c17487ABfEfC4d3feEE7EB860e82aA3f7
 Memecoin Factory:      0x3c4ceDfE7F0a20013B0adae70443d0102166Db54
 Liquidity Pool Factory: 0x5834aEe88F9163a4146B3053D2Ffa34Bf53b6727
+```
+
+### Key Addresses (Hedera Testnet)
+
+```
+Platform Wallet:       0x97b83759eadb2503a8947e8d6eb734795cdefc95
+USDh:                  0x00000000000000000000000000000000006e24c7 (Token ID: 0.0.7200455)
+AIR Token:             0x00000000000000000000000000000000007052b7 (Token ID: 0.0.7361207)
+Memecoin Factory:      0x210542A52aF3c0A5854B75E84C67312Ffe6F004A
+Liquidity Pool Factory: 0x6796cb5394c66f194771b059c54137a9eD64cbEa
+```
+
+### Key Addresses (Solana Devnet) - COMING SOON
+
+```
+Platform Wallet:       TBD
+USDh/USDair:           TBD
+AIR Token:             TBD
+Memecoin Factory:      TBD
+Liquidity Pool Factory: TBD
 ```
 
 ### Key Parameters
@@ -603,4 +981,4 @@ Liquidity Pool Factory: 0x5834aEe88F9163a4146B3053D2Ffa34Bf53b6727
 
 ---
 
-**Last Updated**: December 10, 2024
+**Last Updated**: December 11, 2025
